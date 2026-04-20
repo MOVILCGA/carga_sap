@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Carga Excel SAP</title>
+
+    <!-- Responsive -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- TU CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+</head>
+
+<body>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+
+        <div class="col-md-6 col-lg-5">
+
+            <div class="card shadow-sm p-4">
+
+                <!-- TOP BAR -->
+                <div class="top-bar d-flex justify-content-between align-items-center mb-3">
+                    <div class="user-box">
+                        <i class="bi bi-person-circle"></i>
+                        {{ session.user }}
+                    </div>
+
+                    <a href="/logout" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-box-arrow-right"></i> Salir
+                    </a>
+                </div>
+
+                <!-- HEADER -->
+                <div class="text-center mb-4">
+                    <h2 class="titulo">
+                        <i class="bi bi-file-earmark-excel text-success"></i>
+                        Carga Excel SAP
+                    </h2>
+                    <p class="subtitulo">
+                        Previsualiza y carga datos automáticamente a la base de datos
+                    </p>
+                </div>
+
+                <form id="formExcel" method="POST" enctype="multipart/form-data">
+
+                    <!-- Archivo -->
+                    <div class="mb-3">
+                        <label class="form-label">Archivo Excel</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+                        <div class="form-text">Solo archivos Excel (.xls, .xlsx)</div>
+                    </div>
+
+                    <!-- Acción -->
+                    <div class="mb-3">
+                        <label class="form-label">Acción</label>
+                        <select name="accion" id="accion" class="form-select" onchange="cambiarModo()" required>
+                            <option value="">Seleccionar opción</option>
+                            <option value="crear">Crear nueva tabla</option>
+                            <option value="agregar">Agregar a tabla existente</option>
+                        </select>
+                    </div>
+
+                    <!-- Crear -->
+                    <div id="crearDiv" class="mb-3 d-none">
+                        <input type="text" name="tabla_crear" id="tabla_crear"
+                               class="form-control"
+                               placeholder="Nombre de la nueva tabla">
+                    </div>
+
+                    <!-- Agregar -->
+                    <div id="agregarDiv" class="mb-3 d-none">
+                        <select name="tabla_existente" id="tabla_existente" class="form-select">
+                            <option value="">Seleccionar tabla</option>
+                            {% for tabla in tablas %}
+                                <option value="{{ tabla }}">{{ tabla }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- BOTONES -->
+                    <div class="d-flex gap-2">
+
+                        <!-- PREVIEW -->
+                        <button type="button" class="btn btn-success w-50" onclick="hacerPreview()">
+                            <i class="bi bi-eye"></i> Preview
+                        </button>
+
+                        <!-- PROCESAR -->
+                        <button type="submit" class="btn btn-primary w-50" onclick="return validarFormulario()">
+                            <i class="bi bi-upload"></i> Procesar
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+            <p class="text-center mt-3 subtitulo">
+                Sistema de carga de datos ??
+            </p>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function cambiarModo() {
+        let accion = document.getElementById("accion").value;
+
+        let crearDiv = document.getElementById("crearDiv");
+        let agregarDiv = document.getElementById("agregarDiv");
+
+        crearDiv.classList.add("d-none");
+        agregarDiv.classList.add("d-none");
+
+        if (accion === "crear") {
+            crearDiv.classList.remove("d-none");
+        } else if (accion === "agregar") {
+            agregarDiv.classList.remove("d-none");
+        }
+    }
+
+    function hacerPreview() {
+        let form = document.getElementById("formExcel");
+
+        if (!validarFormulario()) return;
+
+        form.action = "/preview";
+        form.submit();
+    }
+
+    function validarFormulario() {
+        let accion = document.getElementById("accion").value;
+        let archivo = document.querySelector('input[name="file"]').value;
+
+        if (!archivo) {
+            alert("Selecciona un archivo primero");
+            return false;
+        }
+
+        if (!accion) {
+            alert("Selecciona una acción");
+            return false;
+        }
+
+        if (accion === "crear") {
+            let tabla = document.getElementById("tabla_crear").value;
+            if (!tabla) {
+                alert("Escribe el nombre de la tabla");
+                return false;
+            }
+        }
+
+        if (accion === "agregar") {
+            let tabla = document.getElementById("tabla_existente").value;
+            if (!tabla) {
+                alert("Selecciona una tabla");
+                return false;
+            }
+        }
+
+        return true;
+    }
+</script>
+
+</body>
+</html>
