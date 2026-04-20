@@ -1,11 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 import os
 from functools import wraps
 from werkzeug.utils import secure_filename
+from sqlalchemy import text
 
 from backend.base_datos import engine
 from backend.login import validar_usuario, iniciar_sesion, cerrar_sesion, esta_logueado
 from backend.excel import leer_excel, procesar_excel, guardar_en_base
+from time import time
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev_key")
@@ -49,17 +51,85 @@ def error(mensaje):
 # =========================
 # 🔑 LOGIN
 # =========================
+
+from sqlalchemy import text
+
+def obtener_intentos(ip):
+    query = text("""
+        SELECT intentos, bloqueado_hasta
+        FROM login_intentos
+        WHERE ip = :ip
+        LIMIT 1
+    """)
+
+    with engine.connect() as conn:
+        result = conn.execute(query, {"ip": ip}).fetchone()
+
+    if result:
+        return {"intentos": result[0], "bloqueado_hasta": result[1]}
+    else:
+        return {"intentos": 0, "bloqueado_hasta": 0}
+    
+
+def guardar_intentos(ip, intentos, bloqueado_hasta):
+    query = text("""
+        INSERT INTO login_intentos (ip, intentos, bloqueado_hasta)
+        VALUES (:ip, :intentos, :bloqueado)
+        ON DUPLICATE KEY UPDATE
+            intentos = :intentos,
+            bloqueado_hasta = :bloqueado
+    """)
+
+    with engine.connect() as conn:
+        conn.execute(query, {
+            "ip": ip,
+            "intentos": intentos,
+            "bloqueado": bloqueado_hasta
+        })
+        conn.commit()
+
+# memoria simple (luego se puede pasar a DB)
+intentos_login = {}
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         usuario = request.form.get("username")
         password = request.form.get("password")
+        ip = request.remote_addr
+
+        # 🔒 verificar bloqueos
+        data = obtener_intentos(ip)
+
+        if data["bloqueado_hasta"] > time():
+            return render_template("login.html", error="Demasiados intentos. Intenta más tarde.")
+        else:
+    # 🔥 reset automático después del bloqueo
+            data = {"intentos": 0, "bloqueado_hasta": 0}
 
         if validar_usuario(usuario, password):
+
+            # reset intentos
+            intentos_login[ip] = {"intentos": 0, "bloqueado_hasta": 0}
+
             iniciar_sesion(usuario)
+
+            # 🔒 recordar sesión
+            if request.form.get("remember"):
+                session.permanent = True
+
             return redirect(url_for("index"))
+
         else:
-            return render_template("login.html", error="Datos incorrectos")
+            data["intentos"] += 1
+
+            # 🚫 bloquear después de 5 intentos
+            if data["intentos"] >= 5:
+                data["bloqueado_hasta"] = time() + 60  # 1 minuto
+
+            guardar_intentos(ip, data["intentos"], data["bloqueado_hasta"])
+
+            return render_template("login.html", error="Usuario o contraseña incorrectos")
 
     return render_template("login.html")
 
