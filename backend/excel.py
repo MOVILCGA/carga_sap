@@ -55,16 +55,25 @@ def procesar_excel(df):
     cambios.append("Se limpiaron espacios en textos")
 
     # -------------------------
-    # detectar tipo
+    # normalizar columnas
     # -------------------------
     columnas = [col.lower().strip() for col in df.columns]
 
+    # -------------------------
+    # detectar tipo
+    # -------------------------
     if "dimensión 1" in columnas:
         tipo = "sap_1"
+
     elif "centro" in columnas and "proceso" in columnas:
         tipo = "procesos"
+
     elif "centro" in columnas:
         tipo = "sap_2"
+
+    elif "dpto-dest" in columnas and "municipio-dest" in columnas:
+        tipo = "logistica"
+
     else:
         raise Exception(f"Tipo de Excel no reconocido.\nColumnas: {df.columns.tolist()}")
 
@@ -78,7 +87,7 @@ def procesar_excel(df):
         mapa = {
             "centro": "centro",
             "proceso": "proceso",
-            "sub-proceso": "sub_proceso",
+            "subproceso": "sub_proceso",
             "estatus 2025": "estatus_2025",
             "puesto de trabajo": "puesto_trabajo",
             "centro de costo": "centro_costo",
@@ -147,8 +156,47 @@ def procesar_excel(df):
             df["Liberación real"] = limpiar_fechas(df["Liberación real"])
             cambios.append("Se formateó 'Liberación real' a fecha")
 
+    # =========================
+    # 🚚 LOGISTICA
+    # =========================
+    elif tipo == "logistica":
+
+        cambios.append("Archivo detectado como LOGISTICA (despachos)")
+
+        mapa = {
+            "dpto-dest": "dpto_dest",
+            "municipio-dest": "municipio_dest",
+            "recolección origen": "recoleccion_origen",
+            "distribución destino": "distribucion_destino",
+            "tipo trayecto": "tipo_trayecto",
+            "tiempo entrega": "tiempo_entrega",
+            "contra entrega": "contra_entrega",
+            "tipo despacho": "tipo_despacho"
+        }
+
+        nuevas = {}
+        for col in df.columns:
+            key = col.lower().strip().replace("\n", " ")
+            if key in mapa:
+                nuevas[col] = mapa[key]
+
+        if nuevas:
+            cambios.append("Se estandarizaron columnas de logística")
+
+        df = df.rename(columns=nuevas)
+
+        # tiempo entrega → número
+        if "tiempo_entrega" in df.columns:
+            df["tiempo_entrega"] = pd.to_numeric(df["tiempo_entrega"], errors="coerce")
+            cambios.append("Se convirtió 'tiempo_entrega' a número")
+
+        # contra_entrega → string (máx 10)
+        if "contra_entrega" in df.columns:
+            df["contra_entrega"] = df["contra_entrega"].astype(str).str[:10]
+            cambios.append("Se formateó 'contra_entrega' como texto (10 caracteres)")
+
     # -------------------------
-    # duplicados
+    # eliminar duplicados
     # -------------------------
     duplicados = df.duplicated().sum()
     if duplicados > 0:
