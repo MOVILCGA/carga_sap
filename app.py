@@ -50,7 +50,7 @@ def error(mensaje):
 
 
 # =========================
-# 🔑 LOGIN (CON BLOQUEO EN DB)
+# 🔑 LOGIN
 # =========================
 def obtener_intentos(ip):
     query = text("""
@@ -97,19 +97,11 @@ def login():
         data = obtener_intentos(ip)
 
         if data["bloqueado_hasta"] > time():
-            return render_template("login.html", error="Demasiados intentos. Intenta más tarde.")
-
-        if data["bloqueado_hasta"] <= time():
-            data = {"intentos": 0, "bloqueado_hasta": 0}
+            return render_template("login.html", error="Demasiados intentos")
 
         if validar_usuario(usuario, password):
-
             guardar_intentos(ip, 0, 0)
             iniciar_sesion(usuario)
-
-            if request.form.get("remember"):
-                session.permanent = True
-
             return redirect(url_for("index"))
 
         else:
@@ -119,8 +111,7 @@ def login():
                 data["bloqueado_hasta"] = time() + 60
 
             guardar_intentos(ip, data["intentos"], data["bloqueado_hasta"])
-
-            return render_template("login.html", error="Usuario o contraseña incorrectos")
+            return render_template("login.html", error="Credenciales incorrectas")
 
     return render_template("login.html")
 
@@ -135,17 +126,19 @@ def logout():
 
 
 # =========================
-# 🏠 HOME (FILTRO POR COLUMNA + ORDEN + PAGINACIÓN)
+# 🏠 HOME (MULTI FILTRO)
 # =========================
 @app.route("/")
 @login_requerido
 def index():
 
     page = int(request.args.get("page", 1))
-    search = request.args.get("search", "")
-    column = request.args.get("column", "")
     sort = request.args.get("sort", "")
     order = request.args.get("order", "asc")
+
+    # 🔥 MULTI FILTROS
+    columnas_filtro = request.args.getlist("column[]")
+    valores_filtro = request.args.getlist("search[]")
 
     per_page = 50
     offset = (page - 1) * per_page
@@ -153,23 +146,29 @@ def index():
     try:
         with engine.connect() as conn:
 
-            # 🔹 obtener columnas
+            # 🔹 columnas
             columnas_query = conn.execute(text("SELECT * FROM vista_cm01_final LIMIT 1"))
             columnas = list(columnas_query.keys())
 
-            # 🔍 filtro por columna específica
-            where_clause = ""
+            # 🔥 WHERE DINÁMICO
+            where_parts = []
             params = {}
 
-            if search and column in columnas:
-                where_clause = f"WHERE `{column}` LIKE :search"
-                params["search"] = f"%{search}%"
+            for i, (col, val) in enumerate(zip(columnas_filtro, valores_filtro)):
+                if col in columnas and val:
+                    key = f"search{i}"
+                    where_parts.append(f"`{col}` LIKE :{key}")
+                    params[key] = f"%{val}%"
 
-            # 🔃 ordenar seguro
+            where_clause = ""
+            if where_parts:
+                where_clause = "WHERE " + " AND ".join(where_parts)
+
+            # 🔃 ORDER
             if sort not in columnas:
                 sort = columnas[0]
 
-            if order.lower() not in ["asc", "desc"]:
+            if order not in ["asc", "desc"]:
                 order = "asc"
 
             query = f"""
@@ -183,15 +182,12 @@ def index():
             params["limit"] = per_page
             params["offset"] = offset
 
-            result = conn.execute(text(query), params)
-            datos = result.fetchall()
+            datos = conn.execute(text(query), params).fetchall()
 
-            # 📄 total registros
-            count_query = f"""
-                SELECT COUNT(*) FROM vista_cm01_final {where_clause}
-            """
-
+            # COUNT
+            count_query = f"SELECT COUNT(*) FROM vista_cm01_final {where_clause}"
             total = conn.execute(text(count_query), params).scalar()
+
             total_pages = (total // per_page) + (1 if total % per_page else 0)
 
         return render_template(
@@ -200,10 +196,9 @@ def index():
             datos=datos,
             page=page,
             total_pages=total_pages,
-            search=search,
-            column=column,
             sort=sort,
-            order=order
+            order=order,
+            filtros=list(zip(columnas_filtro, valores_filtro))
         )
 
     except Exception as e:
@@ -214,10 +209,9 @@ def index():
             error=str(e),
             page=1,
             total_pages=1,
-            search="",
-            column="",
             sort="",
-            order="asc"
+            order="asc",
+            filtros=[]
         )
 
 
@@ -287,9 +281,6 @@ def upload():
         nombre_tabla = request.form.get("tabla_existente")
     else:
         return error("Acción inválida")
-
-    if not nombre_tabla:
-        return error("Debes indicar una tabla")
 
     try:
         df = leer_excel(ruta)

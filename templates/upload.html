@@ -1,20 +1,19 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Carga Excel SAP</title>
 
-    <!-- Responsive -->
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
 
     <!-- Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
 
     <!-- TU CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}" />
 </head>
 
 <body>
@@ -22,12 +21,20 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
 
-        <div class="col-md-6 col-lg-5">
+        <div class="col-md-8 col-lg-6">
 
-            <div class="card shadow-sm p-4">
+            <!-- 🔙 VOLVER -->
+            <div class="mb-4 text-center">
+                <a href="/" class="btn btn-light shadow-sm px-4">
+                    <i class="bi bi-arrow-left"></i> Volver al dashboard
+                </a>
+            </div>
+
+            <!-- CARD PRINCIPAL -->
+            <div class="card main-card p-4">
 
                 <!-- TOP BAR -->
-                <div class="top-bar d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="user-box">
                         <i class="bi bi-person-circle"></i>
                         {{ session.user }}
@@ -45,23 +52,26 @@
                         Carga Excel SAP
                     </h2>
                     <p class="subtitulo">
-                        Previsualiza y carga datos automáticamente a la base de datos
+                        Previsualiza y carga datos automáticamente
                     </p>
                 </div>
 
+                <!-- ALERTAS -->
+                <div id="alerta" class="alert d-none"></div>
+
+                <!-- FORM -->
                 <form id="formExcel" method="POST" enctype="multipart/form-data">
 
                     <!-- Archivo -->
-                    <div class="mb-3">
-                        <label class="form-label">Archivo Excel</label>
-                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
-                        <div class="form-text">Solo archivos Excel (.xls, .xlsx)</div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Archivo Excel</label>
+                        <input type="file" name="file" class="form-control form-control-lg" accept=".xlsx,.xls" required>
                     </div>
 
                     <!-- Acción -->
-                    <div class="mb-3">
-                        <label class="form-label">Acción</label>
-                        <select name="accion" id="accion" class="form-select" onchange="cambiarModo()" required>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Acción</label>
+                        <select name="accion" id="accion" class="form-select form-select-lg" onchange="cambiarModo()" required>
                             <option value="">Seleccionar opción</option>
                             <option value="crear">Crear nueva tabla</option>
                             <option value="agregar">Agregar a tabla existente</option>
@@ -69,15 +79,15 @@
                     </div>
 
                     <!-- Crear -->
-                    <div id="crearDiv" class="mb-3 d-none">
+                    <div id="crearDiv" class="mb-4 d-none">
                         <input type="text" name="tabla_crear" id="tabla_crear"
-                               class="form-control"
+                               class="form-control form-control-lg"
                                placeholder="Nombre de la nueva tabla">
                     </div>
 
                     <!-- Agregar -->
-                    <div id="agregarDiv" class="mb-3 d-none">
-                        <select name="tabla_existente" id="tabla_existente" class="form-select">
+                    <div id="agregarDiv" class="mb-4 d-none">
+                        <select name="tabla_existente" id="tabla_existente" class="form-select form-select-lg">
                             <option value="">Seleccionar tabla</option>
                             {% for tabla in tablas %}
                                 <option value="{{ tabla }}">{{ tabla }}</option>
@@ -85,27 +95,25 @@
                         </select>
                     </div>
 
-                    <!-- BOTONES -->
-                    <div class="d-flex gap-2">
-
-                        <!-- PREVIEW -->
-                        <button type="button" class="btn btn-success w-50" onclick="hacerPreview()">
-                            <i class="bi bi-eye"></i> Preview
+                    <!-- BOTÓN -->
+                    <div class="text-center mt-4">
+                        <button type="button" class="btn btn-success btn-lg px-5" onclick="hacerPreview()">
+                            <i class="bi bi-eye"></i> Analizar Excel
                         </button>
-
-                        <!-- PROCESAR -->
-                        <button type="submit" class="btn btn-primary w-50" onclick="return validarFormulario()">
-                            <i class="bi bi-upload"></i> Procesar
-                        </button>
-
                     </div>
 
                 </form>
 
+                <!-- LOADER -->
+                <div id="loader" class="text-center mt-4 d-none">
+                    <div class="spinner-border text-primary"></div>
+                    <p class="mt-2 text-muted">Procesando archivo...</p>
+                </div>
+
             </div>
 
-            <p class="text-center mt-3 subtitulo">
-                Sistema de carga de datos ??
+            <p class="text-center mt-3 text-muted">
+                Sistema de carga de datos 🚀
             </p>
 
         </div>
@@ -114,63 +122,69 @@
 </div>
 
 <script>
-    function cambiarModo() {
-        let accion = document.getElementById("accion").value;
+function cambiarModo() {
+    let accion = document.getElementById("accion").value;
 
-        let crearDiv = document.getElementById("crearDiv");
-        let agregarDiv = document.getElementById("agregarDiv");
+    document.getElementById("crearDiv").classList.add("d-none");
+    document.getElementById("agregarDiv").classList.add("d-none");
 
-        crearDiv.classList.add("d-none");
-        agregarDiv.classList.add("d-none");
+    if (accion === "crear") {
+        document.getElementById("crearDiv").classList.remove("d-none");
+    } else if (accion === "agregar") {
+        document.getElementById("agregarDiv").classList.remove("d-none");
+    }
+}
 
-        if (accion === "crear") {
-            crearDiv.classList.remove("d-none");
-        } else if (accion === "agregar") {
-            agregarDiv.classList.remove("d-none");
-        }
+function mostrarAlerta(msg, tipo = "danger") {
+    let alerta = document.getElementById("alerta");
+    alerta.className = `alert alert-${tipo}`;
+    alerta.innerText = msg;
+    alerta.classList.remove("d-none");
+}
+
+function hacerPreview() {
+    let form = document.getElementById("formExcel");
+
+    if (!validarFormulario()) return;
+
+    form.action = "/preview";
+    document.getElementById("loader").classList.remove("d-none");
+    form.submit();
+}
+
+function validarFormulario() {
+    let accion = document.getElementById("accion").value;
+    let archivo = document.querySelector('input[name="file"]').value;
+
+    if (!archivo) {
+        mostrarAlerta("Selecciona un archivo primero");
+        return false;
     }
 
-    function hacerPreview() {
-        let form = document.getElementById("formExcel");
-
-        if (!validarFormulario()) return;
-
-        form.action = "/preview";
-        form.submit();
+    if (!accion) {
+        mostrarAlerta("Selecciona una acción");
+        return false;
     }
 
-    function validarFormulario() {
-        let accion = document.getElementById("accion").value;
-        let archivo = document.querySelector('input[name="file"]').value;
-
-        if (!archivo) {
-            alert("Selecciona un archivo primero");
+    if (accion === "crear") {
+        let tabla = document.getElementById("tabla_crear").value;
+        if (!tabla) {
+            mostrarAlerta("Escribe el nombre de la tabla");
             return false;
         }
+    }
 
-        if (!accion) {
-            alert("Selecciona una acción");
+    if (accion === "agregar") {
+        let tabla = document.getElementById("tabla_existente").value;
+        if (!tabla) {
+            mostrarAlerta("Selecciona una tabla");
             return false;
         }
-
-        if (accion === "crear") {
-            let tabla = document.getElementById("tabla_crear").value;
-            if (!tabla) {
-                alert("Escribe el nombre de la tabla");
-                return false;
-            }
-        }
-
-        if (accion === "agregar") {
-            let tabla = document.getElementById("tabla_existente").value;
-            if (!tabla) {
-                alert("Selecciona una tabla");
-                return false;
-            }
-        }
-
-        return true;
     }
+
+    document.getElementById("loader").classList.remove("d-none");
+    return true;
+}
 </script>
 
 </body>
