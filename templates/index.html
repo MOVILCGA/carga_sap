@@ -2,176 +2,168 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Carga Excel SAP</title>
+    <title>Dashboard</title>
 
-    <!-- Responsive -->
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- TU CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    <style>
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 2;
+            cursor: pointer;
+        }
+
+        thead th a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        thead th:hover {
+            background: #f1f1f1;
+        }
+    </style>
 </head>
 
-<body>
+<body class="bg-light">
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
+<div class="container-fluid mt-4">
 
-        <div class="col-md-6 col-lg-5">
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>
+            <i class="bi bi-table text-primary"></i>
+            Dashboard - Vista CM01
+        </h3>
 
-            <div class="card shadow-sm p-4">
+        <div>
+            <span class="me-3">
+                👤 {{ session.user }}
+            </span>
 
-                <!-- TOP BAR -->
-                <div class="top-bar d-flex justify-content-between align-items-center mb-3">
-                    <div class="user-box">
-                        <i class="bi bi-person-circle"></i>
-                        {{ session.user }}
-                    </div>
+            <a href="/logout" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-box-arrow-right"></i> Salir
+            </a>
+        </div>
+    </div>
 
-                    <a href="/logout" class="btn btn-outline-danger btn-sm">
-                        <i class="bi bi-box-arrow-right"></i> Salir
-                    </a>
-                </div>
+    <!-- FILTRO PRO -->
+    <form method="GET" class="mb-3 d-flex gap-2 flex-wrap">
 
-                <!-- HEADER -->
-                <div class="text-center mb-4">
-                    <h2 class="titulo">
-                        <i class="bi bi-file-earmark-excel text-success"></i>
-                        Carga Excel SAP
-                    </h2>
-                    <p class="subtitulo">
-                        Previsualiza y carga datos automáticamente a la base de datos
-                    </p>
-                </div>
+        <!-- 🔽 SELECT COLUMNA -->
+        <select name="column" class="form-select" style="max-width: 220px;">
+            <option value="">🔍 Todas las columnas</option>
+            {% for col in columnas %}
+                <option value="{{ col }}" {% if col == selected_column %}selected{% endif %}>
+                    {{ col }}
+                </option>
+            {% endfor %}
+        </select>
 
-                <form id="formExcel" method="POST" enctype="multipart/form-data">
+        <!-- 🔍 INPUT -->
+        <input type="text"
+               name="search"
+               value="{{ search }}"
+               class="form-control"
+               placeholder="Buscar...">
 
-                    <!-- Archivo -->
-                    <div class="mb-3">
-                        <label class="form-label">Archivo Excel</label>
-                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
-                        <div class="form-text">Solo archivos Excel (.xls, .xlsx)</div>
-                    </div>
+        <!-- mantener estado -->
+        <input type="hidden" name="sort" value="{{ sort }}">
+        <input type="hidden" name="order" value="{{ order }}">
 
-                    <!-- Acción -->
-                    <div class="mb-3">
-                        <label class="form-label">Acción</label>
-                        <select name="accion" id="accion" class="form-select" onchange="cambiarModo()" required>
-                            <option value="">Seleccionar opción</option>
-                            <option value="crear">Crear nueva tabla</option>
-                            <option value="agregar">Agregar a tabla existente</option>
-                        </select>
-                    </div>
+        <button class="btn btn-primary">
+            <i class="bi bi-search"></i>
+        </button>
 
-                    <!-- Crear -->
-                    <div id="crearDiv" class="mb-3 d-none">
-                        <input type="text" name="tabla_crear" id="tabla_crear"
-                               class="form-control"
-                               placeholder="Nombre de la nueva tabla">
-                    </div>
+        <a href="/" class="btn btn-secondary">
+            Reset
+        </a>
 
-                    <!-- Agregar -->
-                    <div id="agregarDiv" class="mb-3 d-none">
-                        <select name="tabla_existente" id="tabla_existente" class="form-select">
-                            <option value="">Seleccionar tabla</option>
-                            {% for tabla in tablas %}
-                                <option value="{{ tabla }}">{{ tabla }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+        <a href="/upload_form" class="btn btn-success ms-auto">
+            <i class="bi bi-upload"></i> Subir Excel
+        </a>
 
-                    <!-- BOTONES -->
-                    <div class="d-flex gap-2">
+    </form>
 
-                        <!-- PREVIEW -->
-                        <button type="button" class="btn btn-success w-50" onclick="hacerPreview()">
-                            <i class="bi bi-eye"></i> Preview
-                        </button>
+    <!-- TABLA -->
+    <div class="shadow-sm bg-white p-3 rounded">
 
-                        <!-- PROCESAR -->
-                        <button type="submit" class="btn btn-primary w-50" onclick="return validarFormulario()">
-                            <i class="bi bi-upload"></i> Procesar
-                        </button>
+        {% if columnas %}
 
-                    </div>
+        <div class="table-container">
+            <table class="table table-striped table-hover table-sm">
 
-                </form>
+                <thead>
+                    <tr>
+                        {% for col in columnas %}
+                        <th>
+                            <a href="?page=1&search={{ search }}&column={{ selected_column }}&sort={{ col }}&order={% if sort == col and order == 'asc' %}desc{% else %}asc{% endif %}">
+                                {{ col }}
 
-            </div>
+                                {% if sort == col %}
+                                    {% if order == 'asc' %}
+                                        ⬆
+                                    {% else %}
+                                        ⬇
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
 
-            <p class="text-center mt-3 subtitulo">
-                Sistema de carga de datos ??
-            </p>
+                <tbody>
+                    {% for fila in datos %}
+                    <tr>
+                        {% for valor in fila %}
+                            <td>{{ valor }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
 
+            </table>
         </div>
 
+        {% else %}
+            <div class="text-center text-muted p-4">
+                ⚠️ No hay datos
+                <br>
+                <small>{{ error }}</small>
+            </div>
+        {% endif %}
+
     </div>
+
+    <!-- PAGINACIÓN -->
+    <div class="d-flex justify-content-center mt-4 gap-3">
+
+        <a href="?page={{ page - 1 }}&search={{ search }}&column={{ selected_column }}&sort={{ sort }}&order={{ order }}"
+           class="btn btn-outline-secondary {% if page <= 1 %}disabled{% endif %}">
+            ←
+        </a>
+
+        <span>
+            Página {{ page }} / {{ total_pages }}
+        </span>
+
+        <a href="?page={{ page + 1 }}&search={{ search }}&column={{ selected_column }}&sort={{ sort }}&order={{ order }}"
+           class="btn btn-outline-secondary {% if page >= total_pages %}disabled{% endif %}">
+            →
+        </a>
+
+    </div>
+
 </div>
-
-<script>
-    function cambiarModo() {
-        let accion = document.getElementById("accion").value;
-
-        let crearDiv = document.getElementById("crearDiv");
-        let agregarDiv = document.getElementById("agregarDiv");
-
-        crearDiv.classList.add("d-none");
-        agregarDiv.classList.add("d-none");
-
-        if (accion === "crear") {
-            crearDiv.classList.remove("d-none");
-        } else if (accion === "agregar") {
-            agregarDiv.classList.remove("d-none");
-        }
-    }
-
-    function hacerPreview() {
-        let form = document.getElementById("formExcel");
-
-        if (!validarFormulario()) return;
-
-        form.action = "/preview";
-        form.submit();
-    }
-
-    function validarFormulario() {
-        let accion = document.getElementById("accion").value;
-        let archivo = document.querySelector('input[name="file"]').value;
-
-        if (!archivo) {
-            alert("Selecciona un archivo primero");
-            return false;
-        }
-
-        if (!accion) {
-            alert("Selecciona una acción");
-            return false;
-        }
-
-        if (accion === "crear") {
-            let tabla = document.getElementById("tabla_crear").value;
-            if (!tabla) {
-                alert("Escribe el nombre de la tabla");
-                return false;
-            }
-        }
-
-        if (accion === "agregar") {
-            let tabla = document.getElementById("tabla_existente").value;
-            if (!tabla) {
-                alert("Selecciona una tabla");
-                return false;
-            }
-        }
-
-        return true;
-    }
-</script>
 
 </body>
 </html>

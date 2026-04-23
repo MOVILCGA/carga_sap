@@ -3,11 +3,12 @@ import os
 from functools import wraps
 from werkzeug.utils import secure_filename
 from sqlalchemy import text
+from time import time
 
 from backend.base_datos import engine
 from backend.login import validar_usuario, iniciar_sesion, cerrar_sesion, esta_logueado
 from backend.excel import leer_excel, procesar_excel, guardar_en_base
-from time import time
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev_key")
@@ -49,11 +50,8 @@ def error(mensaje):
 
 
 # =========================
-# 🔑 LOGIN
+# 🔑 LOGIN (CON BLOQUEO EN DB)
 # =========================
-
-from sqlalchemy import text
-
 def obtener_intentos(ip):
     query = text("""
         SELECT intentos, bloqueado_hasta
@@ -69,7 +67,7 @@ def obtener_intentos(ip):
         return {"intentos": result[0], "bloqueado_hasta": result[1]}
     else:
         return {"intentos": 0, "bloqueado_hasta": 0}
-    
+
 
 def guardar_intentos(ip, intentos, bloqueado_hasta):
     query = text("""
@@ -88,8 +86,6 @@ def guardar_intentos(ip, intentos, bloqueado_hasta):
         })
         conn.commit()
 
-# memoria simple (luego se puede pasar a DB)
-intentos_login = {}
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -98,23 +94,19 @@ def login():
         password = request.form.get("password")
         ip = request.remote_addr
 
-        # 🔒 verificar bloqueos
         data = obtener_intentos(ip)
 
         if data["bloqueado_hasta"] > time():
             return render_template("login.html", error="Demasiados intentos. Intenta más tarde.")
-        else:
-    # 🔥 reset automático después del bloqueo
+
+        if data["bloqueado_hasta"] <= time():
             data = {"intentos": 0, "bloqueado_hasta": 0}
 
         if validar_usuario(usuario, password):
 
-            # reset intentos
-            intentos_login[ip] = {"intentos": 0, "bloqueado_hasta": 0}
-
+            guardar_intentos(ip, 0, 0)
             iniciar_sesion(usuario)
 
-            # 🔒 recordar sesión
             if request.form.get("remember"):
                 session.permanent = True
 
@@ -123,9 +115,8 @@ def login():
         else:
             data["intentos"] += 1
 
-            # 🚫 bloquear después de 5 intentos
             if data["intentos"] >= 5:
-                data["bloqueado_hasta"] = time() + 60  # 1 minuto
+                data["bloqueado_hasta"] = time() + 60
 
             guardar_intentos(ip, data["intentos"], data["bloqueado_hasta"])
 
@@ -144,18 +135,105 @@ def logout():
 
 
 # =========================
-# 🏠 HOME
+# 🏠 HOME (FILTRO POR COLUMNA + ORDEN + PAGINACIÓN)
 # =========================
 @app.route("/")
 @login_requerido
 def index():
-    from sqlalchemy import inspect
-    tablas = inspect(engine).get_table_names()
-    return render_template("index.html", tablas=tablas)
+
+    page = int(request.args.get("page", 1))
+    search = request.args.get("search", "")
+    column = request.args.get("column", "")
+    sort = request.args.get("sort", "")
+    order = request.args.get("order", "asc")
+
+    per_page = 50
+    offset = (page - 1) * per_page
+
+    try:
+        with engine.connect() as conn:
+
+            # 🔹 obtener columnas
+            columnas_query = conn.execute(text("SELECT * FROM vista_cm01_final LIMIT 1"))
+            columnas = list(columnas_query.keys())
+
+            # 🔍 filtro por columna específica
+            where_clause = ""
+            params = {}
+
+            if search and column in columnas:
+                where_clause = f"WHERE `{column}` LIKE :search"
+                params["search"] = f"%{search}%"
+
+            # 🔃 ordenar seguro
+            if sort not in columnas:
+                sort = columnas[0]
+
+            if order.lower() not in ["asc", "desc"]:
+                order = "asc"
+
+            query = f"""
+                SELECT *
+                FROM vista_cm01_final
+                {where_clause}
+                ORDER BY `{sort}` {order}
+                LIMIT :limit OFFSET :offset
+            """
+
+            params["limit"] = per_page
+            params["offset"] = offset
+
+            result = conn.execute(text(query), params)
+            datos = result.fetchall()
+
+            # 📄 total registros
+            count_query = f"""
+                SELECT COUNT(*) FROM vista_cm01_final {where_clause}
+            """
+
+            total = conn.execute(text(count_query), params).scalar()
+            total_pages = (total // per_page) + (1 if total % per_page else 0)
+
+        return render_template(
+            "index.html",
+            columnas=columnas,
+            datos=datos,
+            page=page,
+            total_pages=total_pages,
+            search=search,
+            column=column,
+            sort=sort,
+            order=order
+        )
+
+    except Exception as e:
+        return render_template(
+            "index.html",
+            columnas=[],
+            datos=[],
+            error=str(e),
+            page=1,
+            total_pages=1,
+            search="",
+            column="",
+            sort="",
+            order="asc"
+        )
 
 
 # =========================
-# 👁️ PREVIEW + CAMBIOS
+# 📤 FORMULARIO SUBIDA
+# =========================
+@app.route("/upload_form")
+@login_requerido
+def upload_form():
+    from sqlalchemy import inspect
+    tablas = inspect(engine).get_table_names()
+    return render_template("upload.html", tablas=tablas)
+
+
+# =========================
+# 👁️ PREVIEW
 # =========================
 @app.route("/preview", methods=["POST"])
 @login_requerido
@@ -168,8 +246,6 @@ def preview():
 
     try:
         df_original = leer_excel(ruta)
-
-        # 🔥 AQUÍ YA VIENE CON CAMBIOS
         df_procesado, cambios = procesar_excel(df_original.copy())
 
         tabla_html = df_procesado.head(10).to_html(
@@ -192,7 +268,7 @@ def preview():
 
 
 # =========================
-# 📤 SUBIR (YA CONFIRMADO)
+# 📤 SUBIR A DB
 # =========================
 @app.route("/upload", methods=["POST"])
 @login_requerido
@@ -217,8 +293,6 @@ def upload():
 
     try:
         df = leer_excel(ruta)
-
-        # 🔥 IMPORTANTE: ignoramos cambios aquí
         df, _ = procesar_excel(df)
 
         mensaje, registros = guardar_en_base(
