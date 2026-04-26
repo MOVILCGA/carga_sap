@@ -10,99 +10,63 @@
     <!-- Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 
-    <style>
-        body {
-            background: linear-gradient(135deg, #0d6efd, #6ea8fe);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .login-card {
-            width: 100%;
-            max-width: 380px;
-            border-radius: 16px;
-            border: none;
-            animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px);}
-            to { opacity: 1; transform: translateY(0);}
-        }
-
-        .btn-login {
-            border-radius: 10px;
-        }
-
-        .password-toggle {
-            cursor: pointer;
-        }
-    </style>
+    <!-- CSS propio -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 
 <body>
 
-<div class="card login-card shadow p-4">
+<div class="login-container">
 
-    <h4 class="text-center mb-3">
-        <i class="bi bi-person-circle"></i> Iniciar Sesión
-    </h4>
+    <div class="card login-card shadow p-4">
 
-    <form method="POST">
+        <h4 class="login-title">
+            <i class="bi bi-person-circle"></i> Iniciar Sesión
+        </h4>
 
-        <!-- Usuario -->
-        <div class="mb-3">
-            <label>Usuario</label>
-            <input type="text" name="username" class="form-control" required>
-        </div>
+        <form method="POST">
 
-        <!-- Contraseña -->
-        <div class="mb-3 position-relative">
-            <label>Contraseña</label>
-            <input type="password" name="password" id="password" class="form-control" required>
+            <!-- Usuario -->
+            <div class="mb-3">
+                <label>Usuario</label>
+                <input type="text" name="username" class="form-control" required>
+            </div>
 
-            <i class="bi bi-eye position-absolute password-toggle"
-               style="right:10px; top:38px;"
-               onclick="togglePassword()"></i>
-        </div>
+            <!-- Contraseña -->
+            <div class="mb-3 position-relative">
+                <label>Contraseña</label>
+                <input type="password" name="password" id="password" class="form-control" required>
 
-        <!-- Recordar -->
-        <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="remember">
-            <label class="form-check-label">Recordar sesión</label>
-        </div>
+                <i class="bi bi-eye position-absolute password-toggle"
+                   onclick="togglePassword()"></i>
+            </div>
 
-        <!-- Botón -->
-        <button class="btn btn-primary w-100 btn-login" id="btnLogin">
-            <span id="btnText">Ingresar</span>
-            <span id="loading" class="spinner-border spinner-border-sm d-none"></span>
-        </button>
+            <!-- Recordar -->
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="remember">
+                <label class="form-check-label">Recordar sesión</label>
+            </div>
 
-    </form>
+            <!-- Botón -->
+            <button class="btn btn-primary w-100 btn-login" id="btnLogin">
+                <span id="btnText">Ingresar</span>
+                <span id="loading" class="spinner-border spinner-border-sm d-none"></span>
+            </button>
 
-    {% if error %}
-        <div class="alert alert-danger mt-3 text-center">
-            {{ error }}
-        </div>
-    {% endif %}
+        </form>
+
+        {% if error %}
+            <div class="alert alert-danger mt-3 text-center">
+                {{ error }}
+            </div>
+        {% endif %}
+
+    </div>
 
 </div>
 
-<script>
-    // 👁️ Mostrar/ocultar contraseña
-    function togglePassword() {
-        let input = document.getElementById("password");
-        input.type = input.type === "password" ? "text" : "password";
-    }
-
-    // 🎨 Animación loading
-    document.querySelector("form").addEventListener("submit", function () {
-        document.getElementById("btnText").classList.add("d-none");
-        document.getElementById("loading").classList.remove("d-none");
-    });
-</script>
+<!-- JS -->
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
 
 </body>
 </html>

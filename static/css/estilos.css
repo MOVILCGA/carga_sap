@@ -1,16 +1,31 @@
 /* =========================
-   🎨 BASE
+   🌈 BASE GLOBAL
 ========================= */
 body {
-    background-color: #f5f7fb;
+    background: linear-gradient(135deg, #eef2ff, #f8fafc);
 }
 
 /* =========================
    📦 CARDS
 ========================= */
-.card {
-    border-radius: 18px;
+.card,
+.main-card,
+.table-card,
+.login-card,
+.resultado-card {
+    border-radius: 15px;
     border: none;
+    background: #fff;
+}
+
+.main-card {
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.table-card {
+    padding: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
 }
 
 /* =========================
@@ -29,42 +44,105 @@ body {
 }
 
 /* =========================
-   👤 TOP BAR
+   👤 NAVBAR / USER
 ========================= */
-.top-bar {
+.navbar-custom {
+    background: #111;
+    height: 60px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    padding: 0 20px;
+}
+
+.menu {
+    list-style: none;
+    display: flex;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+}
+
+.menu li {
+    position: relative;
+}
+
+.menu a {
+    color: white;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.menu a:hover {
+    background: #333;
+}
+
+.submenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: black;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    min-width: 220px;
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: all 0.25s ease;
+    z-index: 1000;
+}
+
+.submenu li a {
+    padding: 12px;
+    height: auto;
+}
+
+.dropdown:hover .submenu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 .user-box {
-    font-size: 14px;
-    color: #6c757d;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-weight: 500;
 }
 
 /* =========================
-   🔘 BOTONES (UNIFICADO)
+   🔘 BOTONES
 ========================= */
 .btn {
     border-radius: 10px;
     transition: all 0.2s ease;
 }
 
-/* Hover general */
 .btn:hover {
     transform: translateY(-1px);
 }
 
-/* Botón principal (preview / acción importante) */
 .btn-success {
-    font-weight: 500;
-    letter-spacing: 0.3px;
-    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.25);
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border: none;
+    box-shadow: 0 6px 18px rgba(34, 197, 94, 0.3);
 }
 
 .btn-success:hover {
-    box-shadow: 0 6px 16px rgba(25, 135, 84, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(34, 197, 94, 0.4);
+}
+
+.btn-light {
+    border-radius: 12px;
+    background: white;
 }
 
 /* =========================
@@ -73,6 +151,12 @@ body {
 .form-control,
 .form-select {
     border-radius: 10px;
+}
+
+.form-control-lg,
+.form-select-lg {
+    padding: 12px;
+    font-size: 15px;
 }
 
 /* =========================
@@ -87,8 +171,6 @@ body {
 
 .login-card {
     width: 350px;
-    border-radius: 15px;
-    border: none;
 }
 
 .login-title {
@@ -124,14 +206,6 @@ body {
     justify-content: center;
 }
 
-.resultado-card {
-    max-width: 500px;
-    width: 100%;
-    border-radius: 15px;
-    border: none;
-    text-align: center;
-}
-
 .resultado-ok {
     color: #198754;
 }
@@ -141,76 +215,12 @@ body {
 }
 
 /* =========================
-   🌈 FONDO MÁS PRO
-========================= */
-body {
-    background: linear-gradient(135deg, #eef2ff, #f8fafc);
-}
-
-/* =========================
-   🧊 CARD PRINCIPAL
-========================= */
-.main-card {
-    border-radius: 20px;
-    background: #ffffff;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-}
-
-/* =========================
-   📝 INPUTS MÁS GRANDES
-========================= */
-.form-control-lg,
-.form-select-lg {
-    padding: 12px;
-    font-size: 15px;
-}
-
-/* =========================
-   🔘 BOTÓN PRO
-========================= */
-.btn-success {
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    border: none;
-    box-shadow: 0 6px 18px rgba(34, 197, 94, 0.3);
-}
-
-.btn-success:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 22px rgba(34, 197, 94, 0.4);
-}
-
-/* =========================
-   🔙 BOTÓN VOLVER
-========================= */
-.btn-light {
-    border-radius: 12px;
-    background: white;
-}
-
-/* =========================
-   👤 USER
-========================= */
-.user-box {
-    font-weight: 500;
-}
-
-/* =========================
-   🌈 FONDO GENERAL
-========================= */
-body {
-    background: linear-gradient(135deg, #eef2ff, #f8fafc);
-}
-
-/* =========================
-   📦 CONTENEDOR
+   📊 DASHBOARD
 ========================= */
 .dashboard-container {
     padding: 20px;
 }
 
-/* =========================
-   🧠 HEADER
-========================= */
 .dashboard-header {
     display: flex;
     justify-content: space-between;
@@ -243,16 +253,6 @@ body {
 }
 
 /* =========================
-   🧊 CARD TABLA
-========================= */
-.table-card {
-    background: white;
-    border-radius: 15px;
-    padding: 15px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-}
-
-/* =========================
    📊 TABLA
 ========================= */
 .table-container {
@@ -260,7 +260,6 @@ body {
     overflow: auto;
 }
 
-/* header sticky */
 .custom-table thead th {
     position: sticky;
     top: 0;
@@ -270,18 +269,15 @@ body {
     font-size: 13px;
 }
 
-/* links */
 .custom-table thead th a {
     text-decoration: none;
     color: #374151;
 }
 
-/* hover header */
 .custom-table thead th:hover {
     background: #eef2ff;
 }
 
-/* filas */
 .custom-table tbody tr {
     transition: 0.2s;
 }
@@ -290,7 +286,6 @@ body {
     background: #f1f5f9;
 }
 
-/* celdas */
 .custom-table td {
     font-size: 13px;
     color: #374151;
@@ -316,18 +311,31 @@ body {
     margin-top: 20px;
 }
 
-/* =========================
-   🎯 BOTONES
-========================= */
-.btn {
-    border-radius: 10px;
+.subprocesos-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.btn-success {
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    border: none;
+.sub-btn {
+    border: 1px solid #0d6efd;
+    background: white;
+    color: #0d6efd;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    cursor: pointer;
 }
 
-.btn-success:hover {
-    transform: translateY(-1px);
+.sub-btn:hover {
+    background: #0d6efd;
+    color: white;
+    transform: scale(1.05);
+}
+
+.sub-btn.active {
+    background: #0d6efd;
+    color: white;
+    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.4);
 }

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Carga por Proceso{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+  <!-- 🧠 HEADER -->
+  <h3 class="mb-4">
+    <i class="bi bi-diagram-3"></i> Carga de Trabajo por Proceso
+  </h3>
+
+  <!-- 🔘 PROCESOS -->
+  <div class="procesos-grid mb-4">
+
+    {% for p in procesos %}
+      <button 
+        class="proceso-btn"
+        onclick="seleccionarProceso(this, '{{ p }}')">
+        {{ p }}
+      </button>
+    {% endfor %}
+
+  </div>
+
+  <!-- 🔽 SUBPROCESOS -->
+  <div class="mt-4">
+    <h5 class="text-muted mb-3">Subprocesos</h5>
+
+    <div id="subprocesos-container" class="subprocesos-grid">
+      <!-- JS los pinta -->
+    </div>
+  </div>
+
+  <!-- 📊 GRÁFICA -->
+  <div class="card mt-5 p-4 shadow-sm rounded-4">
+    <h5 class="text-center mb-3">
+      Resultado del proceso seleccionado
+    </h5>
+
+    <canvas id="graficaProceso" height="100"></canvas>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/proceso.js') }}"></script>
+
+<script>
+/* =========================
+   🔥 SELECCIONAR PROCESO
+========================= */
+function seleccionarProceso(btn, proceso) {
+
+    // 🔥 quitar selección anterior
+    document.querySelectorAll(".proceso-btn").forEach(b => {
+        b.classList.remove("active");
+    });
+
+    // 🔥 activar actual
+    btn.classList.add("active");
+
+    // 📊 gráfica general
+    cargarGrafica(proceso);
+
+    // 🔽 cargar subprocesos
+    cargarSubprocesos(proceso);
+}
+</script>
+
+{% endblock %}

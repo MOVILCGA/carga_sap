@@ -1,22 +1,8 @@
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8" />
-    <title>Carga Excel SAP</title>
+{% extends "base.html" %}
 
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+{% block title %}Carga Excel{% endblock %}
 
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-
-    <!-- Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
-
-    <!-- TU CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}" />
-</head>
-
-<body>
+{% block content %}
 
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -25,38 +11,26 @@
 
             <!-- 🔙 VOLVER -->
             <div class="mb-4 text-center">
-                <a href="/" class="btn btn-light shadow-sm px-4">
-                    <i class="bi bi-arrow-left"></i> Volver al dashboard
+                <a href="{{ url_for('dashboard') }}" class="btn btn-light shadow-sm px-4">
+                    <i class="bi bi-arrow-left"></i> Volver
                 </a>
             </div>
 
-            <!-- CARD PRINCIPAL -->
+            <!-- CARD -->
             <div class="card main-card p-4">
-
-                <!-- TOP BAR -->
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="user-box">
-                        <i class="bi bi-person-circle"></i>
-                        {{ session.user }}
-                    </div>
-
-                    <a href="/logout" class="btn btn-outline-danger btn-sm">
-                        <i class="bi bi-box-arrow-right"></i> Salir
-                    </a>
-                </div>
 
                 <!-- HEADER -->
                 <div class="text-center mb-4">
                     <h2 class="titulo">
                         <i class="bi bi-file-earmark-excel text-success"></i>
-                        Carga Excel SAP
+                        Carga Excel
                     </h2>
                     <p class="subtitulo">
                         Previsualiza y carga datos automáticamente
                     </p>
                 </div>
 
-                <!-- ALERTAS -->
+                <!-- ALERTA -->
                 <div id="alerta" class="alert d-none"></div>
 
                 <!-- FORM -->
@@ -71,7 +45,7 @@
                     <!-- Acción -->
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Acción</label>
-                        <select name="accion" id="accion" class="form-select form-select-lg" onchange="cambiarModo()" required>
+                        <select name="accion" id="accion" class="form-select form-select-lg" required>
                             <option value="">Seleccionar opción</option>
                             <option value="crear">Crear nueva tabla</option>
                             <option value="agregar">Agregar a tabla existente</option>
@@ -97,7 +71,7 @@
 
                     <!-- BOTÓN -->
                     <div class="text-center mt-4">
-                        <button type="button" class="btn btn-success btn-lg px-5" onclick="hacerPreview()">
+                        <button type="button" class="btn btn-success btn-lg px-5" id="btnPreview">
                             <i class="bi bi-eye"></i> Analizar Excel
                         </button>
                     </div>
@@ -121,71 +95,8 @@
     </div>
 </div>
 
-<script>
-function cambiarModo() {
-    let accion = document.getElementById("accion").value;
+{% endblock %}
 
-    document.getElementById("crearDiv").classList.add("d-none");
-    document.getElementById("agregarDiv").classList.add("d-none");
-
-    if (accion === "crear") {
-        document.getElementById("crearDiv").classList.remove("d-none");
-    } else if (accion === "agregar") {
-        document.getElementById("agregarDiv").classList.remove("d-none");
-    }
-}
-
-function mostrarAlerta(msg, tipo = "danger") {
-    let alerta = document.getElementById("alerta");
-    alerta.className = `alert alert-${tipo}`;
-    alerta.innerText = msg;
-    alerta.classList.remove("d-none");
-}
-
-function hacerPreview() {
-    let form = document.getElementById("formExcel");
-
-    if (!validarFormulario()) return;
-
-    form.action = "/preview";
-    document.getElementById("loader").classList.remove("d-none");
-    form.submit();
-}
-
-function validarFormulario() {
-    let accion = document.getElementById("accion").value;
-    let archivo = document.querySelector('input[name="file"]').value;
-
-    if (!archivo) {
-        mostrarAlerta("Selecciona un archivo primero");
-        return false;
-    }
-
-    if (!accion) {
-        mostrarAlerta("Selecciona una acción");
-        return false;
-    }
-
-    if (accion === "crear") {
-        let tabla = document.getElementById("tabla_crear").value;
-        if (!tabla) {
-            mostrarAlerta("Escribe el nombre de la tabla");
-            return false;
-        }
-    }
-
-    if (accion === "agregar") {
-        let tabla = document.getElementById("tabla_existente").value;
-        if (!tabla) {
-            mostrarAlerta("Selecciona una tabla");
-            return false;
-        }
-    }
-
-    document.getElementById("loader").classList.remove("d-none");
-    return true;
-}
-</script>
-
-</body>
-</html>
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}
