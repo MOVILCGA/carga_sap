@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Carga por Planta{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3 class="mb-4">
+    <i class="bi bi-building"></i> Carga de Trabajo por Planta
+  </h3>
+
+  <!-- 🔘 CENTROS (ANTES ERAN PROCESOS) -->
+  <div class="procesos-grid mb-4">
+
+    <button class="proceso-btn" onclick="seleccionarCentro(this, '1000')">Bogotá</button>
+    <button class="proceso-btn" onclick="seleccionarCentro(this, '5000')">Cali</button>
+    <button class="proceso-btn" onclick="seleccionarCentro(this, '6000')">Bucaramanga</button>
+
+  </div>
+
+  <!-- 📊 GRÁFICA -->
+  <div class="card mt-5 p-4 shadow-sm rounded-4">
+    <h5 class="text-center mb-3">
+      Resultado por planta
+    </h5>
+
+    <canvas id="graficaProceso" height="100"></canvas>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/planta.js') }}"></script>
+
+<script>
+function seleccionarCentro(btn, centro) {
+
+    document.querySelectorAll(".proceso-btn").forEach(b => {
+        b.classList.remove("active");
+    });
+
+    btn.classList.add("active");
+
+    cargarGraficaPlanta(centro);
+}
+</script>
+
+{% endblock %}

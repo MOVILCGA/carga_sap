@@ -173,9 +173,12 @@ def proceso_chart():
         SELECT 
             Centro,
             Status,
-            ROUND(SUM(COALESCE(necesidad, 0)), 0) as total
+            ROUND(SUM(COALESCE(Necesidad, 0)), 0) as total
         FROM vista_cm01_final
         {where}
+        AND Status IS NOT NULL
+        AND Status <> ''
+        AND LOWER(Status) <> 'nan'
         GROUP BY Centro, Status
         ORDER BY Centro
     """)
@@ -415,6 +418,85 @@ def subprocesos():
 
     return jsonify(data)
 
+@app.route("/planta")
+@login_requerido
+def planta():
+
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT DISTINCT PROCESO
+            FROM vista_cm01_final
+            WHERE PROCESO IS NOT NULL
+            ORDER BY PROCESO
+        """))
+
+        procesos = [row[0] for row in result.fetchall()]
+
+    return render_template("planta.html", procesos=procesos)
+
+@app.route("/api/planta_chart")
+@login_requerido
+def planta_chart():
+
+    centro = request.args.get("centro")
+
+    query = text("""
+        SELECT 
+            PROCESO,
+            Status,
+            SUM(Necesidad) as total
+        FROM vista_cm01_final
+        WHERE Centro = :centro
+        AND Status IS NOT NULL
+        AND Status != 'nan'
+        GROUP BY PROCESO, Status
+    """)
+
+    with engine.connect() as conn:
+        result = conn.execute(query, {"centro": centro}).fetchall()
+
+    procesos = []
+    statuses = set()
+    data_dict = {}
+
+    for row in result:
+        proceso = row[0]
+        status = row[1]
+        total = int(row[2] or 0)
+
+        if proceso not in procesos:
+            procesos.append(proceso)
+
+        statuses.add(status)
+
+        if proceso not in data_dict:
+            data_dict[proceso] = {}
+
+        data_dict[proceso][status] = total
+
+    datasets = []
+
+    colores = {
+        "ABIE": "#f1c40f",
+        "NOTP": "#e67e22",
+        "IMPR": "#3498db"
+    }
+
+    for status in statuses:
+        data = []
+        for proceso in procesos:
+            data.append(data_dict.get(proceso, {}).get(status, 0))
+
+        datasets.append({
+            "label": status,
+            "data": data,
+            "backgroundColor": colores.get(status, "#95a5a6")
+        })
+
+    return jsonify({
+        "labels": procesos,
+        "datasets": datasets
+    })
 
 # =========================
 # 🚀 RUN

@@ -4,7 +4,7 @@ let subprocesoActivo = null;
 
 
 // =========================
-// 📊 CARGAR GRÁFICA
+// 📊 GRAFICA POR PROCESO
 // =========================
 function cargarGrafica(proceso, sub_proceso = null) {
 
@@ -19,58 +19,86 @@ function cargarGrafica(proceso, sub_proceso = null) {
             if (!res.ok) throw new Error("Error en la API");
             return res.json();
         })
-        .then(data => {
-
-            const ctx = document.getElementById("graficaProceso");
-            if (!ctx) return;
-
-            if (chart) chart.destroy();
-
-            chart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.labels,
-                    datasets: data.datasets
-                },
-                options: {
-                    responsive: true,
-
-                    plugins: {
-                        legend: {
-                            position: 'right'
-                        },
-
-                        // 🔥 TOOLTIP CON HORAS
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + context.raw + ' horas';
-                                }
-                            }
-                        }
-                    },
-
-                    scales: {
-                        x: {
-                            stacked: true
-                        },
-                        y: {
-                            stacked: true,
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Horas'
-                            }
-                        }
-                    }
-                }
-            });
-
-        })
+        .then(data => renderGrafica(data, "graficaProceso"))
         .catch(err => {
             console.error(err);
             alert("Error cargando la gráfica");
         });
+}
+
+
+// =========================
+// 🏭 GRAFICA POR PLANTA (NUEVO)
+// =========================
+function cargarGraficaPorPlanta(centro) {
+
+    fetch(`/api/planta_chart?centro=${encodeURIComponent(centro)}`)
+        .then(res => {
+            if (!res.ok) throw new Error("Error en la API");
+            return res.json();
+        })
+        .then(data => renderGrafica(data, "graficaProceso")) // 🔥 reutiliza canvas
+        .catch(err => {
+            console.error(err);
+            alert("Error cargando gráfica por planta");
+        });
+}
+
+
+// =========================
+// 🎨 RENDER GRAFICA (REUTILIZABLE)
+// =========================
+function renderGrafica(data, canvasId) {
+
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: data.datasets
+        },
+        options: {
+            responsive: true,
+
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+
+                // 🔥 TOOLTIP CON HORAS
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.raw + ' horas';
+                        }
+                    }
+                }
+            },
+
+            scales: {
+                x: {
+                    stacked: true
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return Math.round(value); // 🔥 enteros
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Horas'
+                    }
+                }
+            }
+        }
+    });
 }
 
 
@@ -101,7 +129,6 @@ function cargarSubprocesos(proceso) {
 
                 const btn = document.createElement("button");
 
-                // 🔥 ESTILO TIPO CHIP
                 btn.className = "sub-btn";
                 btn.innerText = sub;
 
@@ -109,7 +136,6 @@ function cargarSubprocesos(proceso) {
 
                 container.appendChild(btn);
 
-                // 🔥 AUTO-SELECCIONAR EL PRIMERO
                 if (index === 0) {
                     seleccionarSubproceso(proceso, sub, btn);
                 }
@@ -131,14 +157,11 @@ function seleccionarSubproceso(proceso, sub, boton) {
 
     subprocesoActivo = sub;
 
-    // 🔥 quitar selección anterior
     document.querySelectorAll("#subprocesos-container .sub-btn").forEach(btn => {
         btn.classList.remove("active");
     });
 
-    // 🔥 marcar activo
     boton.classList.add("active");
 
-    // 📊 cargar gráfica filtrada
     cargarGrafica(proceso, sub);
 }
