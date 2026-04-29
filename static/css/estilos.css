@@ -339,3 +339,53 @@ body {
     color: white;
     box-shadow: 0 4px 10px rgba(13, 110, 253, 0.4);
 }
+
+/* 🔥 Tabla moderna */
+#tablaPivot {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Header */
+#tablaPivot thead {
+    background: linear-gradient(135deg, #1f2937, #111827);
+    color: white;
+    font-size: 14px;
+}
+
+/* Filas */
+#tablaPivot tbody tr {
+    transition: all 0.2s ease;
+}
+
+/* Hover */
+#tablaPivot tbody tr:hover {
+    background-color: #f3f4f6;
+    transform: scale(1.01);
+}
+
+/* Primera columna (icono) */
+.icono-expandir {
+    text-align: center;
+    font-size: 18px;
+    color: #2563eb;
+    cursor: pointer;
+}
+
+/* Totales */
+#tablaPivot td strong {
+    color: #111827;
+    font-weight: 600;
+}
+
+/* Detalle */
+.detalle {
+    background-color: #f9fafb;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Animación */
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}

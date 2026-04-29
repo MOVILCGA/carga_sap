@@ -497,7 +497,228 @@ def planta_chart():
         "labels": procesos,
         "datasets": datasets
     })
+@app.route("/pivot")
+@login_requerido
+def pivot():
+    return render_template("pivot.html")
+@app.route("/api/resumen_subproceso")
+@login_requerido
+def resumen_subproceso():
 
+    query = text("""
+        SELECT
+            sub_proceso,
+            SUM(CASE WHEN Status = 'ABIE' THEN COALESCE(Necesidad,0) ELSE 0 END) AS ABIE,
+            SUM(CASE WHEN Status IN ('IMPR','LIB.') THEN COALESCE(Necesidad,0) ELSE 0 END) AS IMPR,
+            SUM(CASE WHEN Status = 'NOTP' THEN COALESCE(Necesidad,0) ELSE 0 END) AS NOTP,
+            SUM(COALESCE(Necesidad,0)) AS TOTAL
+        FROM vista_cm01_final
+        WHERE Status IS NOT NULL
+        AND Status <> ''
+        AND LOWER(Status) <> 'nan'
+        GROUP BY sub_proceso
+        ORDER BY sub_proceso
+    """)
+
+    with engine.connect() as conn:
+        data = conn.execute(query).fetchall()
+
+    return jsonify([dict(row._mapping) for row in data])
+
+@app.route("/api/detalle_subproceso")
+@login_requerido
+def detalle_subproceso():
+
+    sub = request.args.get("sub_proceso")
+
+    query = text("""
+        SELECT
+            sub_proceso,
+            Nombre,
+            `Pedido de cliente`,
+            PosPedClte,
+            Orden,
+
+            SUM(CASE WHEN Status = 'ABIE' THEN COALESCE(Necesidad,0) ELSE 0 END) AS ABIE,
+            SUM(CASE WHEN Status IN ('IMPR','LIB.') THEN COALESCE(Necesidad,0) ELSE 0 END) AS IMPR,
+            SUM(CASE WHEN Status = 'NOTP' THEN COALESCE(Necesidad,0) ELSE 0 END) AS NOTP,
+            SUM(COALESCE(Necesidad,0)) AS TOTAL
+
+        FROM vista_cm01_final
+        WHERE sub_proceso = :sub
+        GROUP BY sub_proceso, Nombre, `Pedido de cliente`, PosPedClte, Orden
+    """)
+
+    with engine.connect() as conn:
+        data = conn.execute(query, {"sub": sub}).fetchall()
+
+    return jsonify([dict(row._mapping) for row in data])
+
+
+# =========================
+# 🔥 TURNOS (CRUD)
+# =========================
+
+@app.route("/turnos")
+@login_requerido
+def turnos():
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT * FROM turnos
+            WHERE activo = 1
+            ORDER BY id
+        """))
+        data = result.fetchall()
+
+    return render_template("turnos.html", turnos=data)
+
+
+# ➕ CREAR
+@app.route("/turnos/crear", methods=["POST"])
+@login_requerido
+def crear_turno():
+
+    tipo = request.form.get("tipo_turno")
+    inicio = request.form.get("inicio")
+    fin = request.form.get("fin")
+    horas = request.form.get("numero_horas")
+
+    query = text("""
+        INSERT INTO turnos (tipo_turno, inicio, fin, numero_horas, activo)
+        VALUES (:tipo, :inicio, :fin, :horas, 1)
+    """)
+
+    with engine.connect() as conn:
+        conn.execute(query, {
+            "tipo": tipo,
+            "inicio": inicio,
+            "fin": fin,
+            "horas": horas
+        })
+        conn.commit()
+
+    return redirect(url_for("turnos"))
+
+
+# ✏️ EDITAR
+@app.route("/turnos/editar/<int:id>", methods=["POST"])
+@login_requerido
+def editar_turno(id):
+
+    query = text("""
+        UPDATE turnos
+        SET tipo_turno=:tipo,
+            inicio=:inicio,
+            fin=:fin,
+            numero_horas=:horas
+        WHERE id=:id
+    """)
+
+    with engine.connect() as conn:
+        conn.execute(query, {
+            "id": id,
+            "tipo": request.form.get("tipo_turno"),
+            "inicio": request.form.get("inicio"),
+            "fin": request.form.get("fin"),
+            "horas": request.form.get("numero_horas")
+        })
+        conn.commit()
+
+    return redirect(url_for("turnos"))
+
+
+# 🗑️ DESACTIVAR
+@app.route("/turnos/eliminar/<int:id>")
+@login_requerido
+def eliminar_turno(id):
+
+    query = text("""
+        UPDATE turnos
+        SET activo = 0
+        WHERE id = :id
+    """)
+
+    with engine.connect() as conn:
+        conn.execute(query, {"id": id})
+        conn.commit()
+
+    return redirect(url_for("turnos"))
+
+# =========================
+# 🔥 MAQUINA TURNOS (TU VERSION PRO)
+# =========================
+
+@app.route("/maquina_turnos")
+@login_requerido
+def maquina_turnos():
+
+    with engine.connect() as conn:
+
+        # 🔥 NO CARGAR DATOS AL INICIO
+        data = []
+
+        maquinas = conn.execute(text("""
+            SELECT DISTINCT puesto_trabajo
+            FROM `puestos de trabajo`
+            ORDER BY puesto_trabajo
+        """)).fetchall()
+
+        turnos = conn.execute(text("""
+            SELECT tipo_turno, numero_horas
+            FROM turnos
+            WHERE activo = 1
+        """)).fetchall()
+
+    return render_template(
+        "maquina_turnos.html",
+        data=data,
+        maquinas=[m[0] for m in maquinas],
+        turnos=[{"tipo": t[0], "horas": t[1]} for t in turnos]
+    )
+
+# ➕ CREAR MAQUINA TURNO
+@app.route("/maquina_turnos/crear", methods=["POST"])
+@login_requerido
+def crear_maquina_turno():
+
+    total = float(request.form.get("total_horas") or 0)
+    eficiencia = float(request.form.get("factor_eficiencia") or 1)
+
+    disponibilidad = total * eficiencia
+
+    query = text("""
+        INSERT INTO maquinas_turnos 
+        (maquina, turno, total_horas, semana, factor_eficiencia, disponibilidad, activo)
+        VALUES (:maquina, :turno, :total, :semana, :eficiencia, :disp, 1)
+    """)
+
+    with engine.connect() as conn:
+        conn.execute(query, {
+            "maquina": request.form.get("maquina"),
+            "turno": request.form.get("turno"),
+            "total": total,
+            "semana": request.form.get("semana"),
+            "eficiencia": eficiencia,
+            "disp": disponibilidad
+        })
+        conn.commit()
+
+    return redirect(url_for("maquina_turnos"))
+
+# 🗑️ DESACTIVAR
+@app.route("/maquina_turnos/eliminar/<int:id>")
+@login_requerido
+def eliminar_maquina_turno(id):
+
+    with engine.connect() as conn:
+        conn.execute(text("""
+            UPDATE maquinas_turnos
+            SET activo = 0
+            WHERE id = :id
+        """), {"id": id})
+        conn.commit()
+
+    return redirect(url_for("maquina_turnos"))
 # =========================
 # 🚀 RUN
 # =========================

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <h3 class="mb-4">🏭 Planeación Máquina - Turnos</h3>
+
+    <!-- FORM -->
+    <div class="card p-4 shadow-sm mb-4">
+
+        <form method="POST" action="{{ url_for('crear_maquina_turno') }}">
+
+            <div class="row g-3">
+
+                <div class="col-md-2">
+                    <select name="maquina" class="form-control" required>
+                        <option>Máquina</option>
+                        {% for m in maquinas %}
+                        <option value="{{ m }}">{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-1">
+                    <select name="turno" id="turno" class="form-control" required onchange="setHoras(this)">
+                        <option>Turno</option>
+                        {% for t in turnos %}
+                        <option value="{{ t.tipo }}" data-horas="{{ t.horas }}">
+                            {{ t.tipo }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <input name="total_horas" id="horas" class="form-control" placeholder="Horas">
+                </div>
+
+                <div class="col-md-2">
+                    <input name="semana" class="form-control" placeholder="Semana (ej: 2026-15)">
+                </div>
+
+                <div class="col-md-2">
+                    <input name="factor_eficiencia" id="ef" class="form-control" placeholder="0.85">
+                </div>
+
+                <div class="col-md-2">
+                    <input id="disp" class="form-control" placeholder="Disponibilidad" readonly>
+                </div>
+
+                <div class="col-md-1">
+                    <button class="btn btn-success w-100">+</button>
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- TABLA -->
+    <table class="table table-hover text-center">
+
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Máquina</th>
+                <th>Turno</th>
+                <th>Horas</th>
+                <th>Semana</th>
+                <th>Eficiencia</th>
+                <th>Disponibilidad</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+        {% for d in data %}
+        <tr>
+            <td>{{ d.id }}</td>
+            <td>{{ d.maquina }}</td>
+            <td>{{ d.turno }}</td>
+            <td>{{ d.total_horas }}</td>
+            <td>{{ d.semana }}</td>
+            <td>{{ d.factor_eficiencia }}</td>
+            <td>{{ d.disponibilidad }}</td>
+
+            <td>
+                <a href="{{ url_for('eliminar_maquina_turno', id=d.id) }}"
+                   class="btn btn-danger btn-sm">X</a>
+            </td>
+        </tr>
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+<script>
+// 🔥 AUTO HORAS SEGÚN TURNO
+function setHoras(select){
+    let horas = select.options[select.selectedIndex].dataset.horas;
+    document.getElementById("horas").value = horas;
+    calcular();
+}
+
+// 🔥 CALCULAR DISPONIBILIDAD
+document.getElementById("ef").addEventListener("input", calcular);
+document.getElementById("horas").addEventListener("input", calcular);
+
+function calcular(){
+    let h = parseFloat(document.getElementById("horas").value) || 0;
+    let ef = parseFloat(document.getElementById("ef").value) || 0;
+    document.getElementById("disp").value = (h * ef).toFixed(2);
+}
+</script>
+
+{% endblock %}

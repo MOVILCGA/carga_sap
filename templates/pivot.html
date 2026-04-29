@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Tabla Dinámica{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <h3 class="mb-4">
+        📊 Tabla dinámica (Carga por Subproceso)
+    </h3>
+
+    <div class="card p-3 shadow-sm">
+
+        <table class="table table-bordered table-hover" id="tablaPivot">
+
+            <thead class="table-dark">
+                <tr>
+                    <th style="width:40px;"></th>
+                    <th>Subproceso</th>
+                    <th>ABIERTO</th>
+                    <th>LIBERADO</th>
+                    <th>PARCIAL</th>
+                    <th>TOTAL</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <!-- JS llena esto -->
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}

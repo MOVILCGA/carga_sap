@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Turnos{% endblock %}
+
+{% block content %}
+
+<style>
+/* 🎨 ESTILO GENERAL */
+.card-custom {
+    border-radius: 16px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    border: none;
+}
+
+.input-custom {
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    padding: 10px;
+    transition: 0.2s;
+}
+
+.input-custom:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 2px rgba(40,167,69,0.2);
+}
+
+.btn-success {
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.btn-primary {
+    border-radius: 10px;
+}
+
+.btn-danger {
+    border-radius: 10px;
+}
+
+/* 🧾 TABLA */
+.table thead {
+    background: linear-gradient(90deg, #1f2937, #374151);
+    color: white;
+}
+
+.table tbody tr {
+    transition: 0.2s;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* ✨ HEADER */
+.title-icon {
+    font-size: 28px;
+    margin-right: 10px;
+}
+
+</style>
+
+<div class="container mt-4">
+
+    <!-- 🧠 HEADER -->
+    <h3 class="mb-4 d-flex align-items-center">
+        <span class="title-icon">⏰</span>
+        Gestión de Turnos
+    </h3>
+
+    <!-- ➕ FORM -->
+    <div class="card card-custom p-4 mb-4">
+
+        <form method="POST" action="{{ url_for('crear_turno') }}">
+
+            <div class="row g-3 align-items-center">
+
+                <div class="col-md-2">
+                    <input name="tipo_turno" class="form-control input-custom" placeholder="Tipo (A, B...)" required>
+                </div>
+
+                <div class="col-md-2">
+                    <input name="inicio" type="number" class="form-control input-custom" placeholder="Inicio">
+                </div>
+
+                <div class="col-md-2">
+                    <input name="fin" type="number" class="form-control input-custom" placeholder="Fin">
+                </div>
+
+                <div class="col-md-2">
+                    <input name="numero_horas" type="number" class="form-control input-custom" placeholder="Horas">
+                </div>
+
+                <div class="col-md-2">
+                    <button class="btn btn-success w-100">
+                        ➕ Crear
+                    </button>
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- 📊 TABLA -->
+    <div class="card card-custom p-3">
+
+        <table class="table table-hover align-middle text-center">
+
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Tipo</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Horas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+            {% for t in turnos %}
+            <tr>
+
+                <form method="POST" action="{{ url_for('editar_turno', id=t.id) }}">
+
+                    <td class="fw-bold">{{ t.id }}</td>
+
+                    <td>
+                        <input name="tipo_turno" value="{{ t.tipo_turno }}" class="form-control input-custom text-center">
+                    </td>
+
+                    <td>
+                        <input name="inicio" value="{{ t.inicio }}" class="form-control input-custom text-center">
+                    </td>
+
+                    <td>
+                        <input name="fin" value="{{ t.fin }}" class="form-control input-custom text-center">
+                    </td>
+
+                    <td>
+                        <input name="numero_horas" value="{{ t.numero_horas }}" class="form-control input-custom text-center">
+                    </td>
+
+                    <td>
+
+                        <div class="d-flex justify-content-center gap-2">
+
+                            <button class="btn btn-primary btn-sm">
+                                💾 Guardar
+                            </button>
+
+                            <a href="{{ url_for('eliminar_turno', id=t.id) }}"
+                               class="btn btn-danger btn-sm"
+                               onclick="return confirm('¿Desactivar turno?')">
+                               ❌
+                            </a>
+
+                        </div>
+
+                    </td>
+
+                </form>
+
+            </tr>
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}
