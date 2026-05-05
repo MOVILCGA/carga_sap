@@ -505,7 +505,21 @@ def pivot():
 @login_requerido
 def resumen_subproceso():
 
-    query = text("""
+    centro = request.args.get("centro")
+
+    where = """
+        WHERE Status IS NOT NULL
+        AND Status <> ''
+        AND LOWER(Status) <> 'nan'
+    """
+
+    params = {}
+
+    if centro:
+        where += " AND Centro = :centro"
+        params["centro"] = centro
+
+    query = text(f"""
         SELECT
             sub_proceso,
             SUM(CASE WHEN Status = 'ABIE' THEN COALESCE(Necesidad,0) ELSE 0 END) AS ABIE,
@@ -513,18 +527,15 @@ def resumen_subproceso():
             SUM(CASE WHEN Status = 'NOTP' THEN COALESCE(Necesidad,0) ELSE 0 END) AS NOTP,
             SUM(COALESCE(Necesidad,0)) AS TOTAL
         FROM vista_cm01_final
-        WHERE Status IS NOT NULL
-        AND Status <> ''
-        AND LOWER(Status) <> 'nan'
+        {where}
         GROUP BY sub_proceso
         ORDER BY sub_proceso
     """)
 
     with engine.connect() as conn:
-        data = conn.execute(query).fetchall()
+        data = conn.execute(query, params).fetchall()
 
     return jsonify([dict(row._mapping) for row in data])
-
 @app.route("/api/detalle_subproceso")
 @login_requerido
 def detalle_subproceso():
@@ -565,13 +576,11 @@ def turnos():
     with engine.connect() as conn:
         result = conn.execute(text("""
             SELECT * FROM turnos
-            WHERE activo = 1
             ORDER BY id
         """))
         data = result.fetchall()
 
     return render_template("turnos.html", turnos=data)
-
 
 # ➕ CREAR
 @app.route("/turnos/crear", methods=["POST"])
@@ -644,10 +653,40 @@ def eliminar_turno(id):
 
     return redirect(url_for("turnos"))
 
+# ♻️ REACTIVAR TURNO
+@app.route("/turnos/reactivar/<int:id>")
+@login_requerido
+def reactivar_turno(id):
+
+    query = text("""
+        UPDATE turnos
+        SET activo = 1
+        WHERE id = :id
+    """)
+
+    with engine.connect() as conn:
+        conn.execute(query, {"id": id})
+        conn.commit()
+
+    return redirect(url_for("turnos"))
+
 # =========================
 # 🔥 MAQUINA TURNOS (TU VERSION PRO)
 # =========================
+@app.route("/api/centros")
+@login_requerido
+def centros():
+    query = text("""
+        SELECT DISTINCT Centro
+        FROM vista_cm01_final
+        WHERE Centro IS NOT NULL
+        ORDER BY Centro
+    """)
 
+    with engine.connect() as conn:
+        data = conn.execute(query).fetchall()
+
+    return jsonify([row[0] for row in data])
 @app.route("/maquina_turnos")
 @login_requerido
 def maquina_turnos():
@@ -658,10 +697,12 @@ def maquina_turnos():
         data = []
 
         maquinas = conn.execute(text("""
-            SELECT DISTINCT puesto_trabajo
-            FROM `puestos de trabajo`
-            ORDER BY puesto_trabajo
-        """)).fetchall()
+        SELECT 
+            puesto_trabajo,
+            COALESCE(eficiencia, 1) as eficiencia
+        FROM `puestos de trabajo`
+        ORDER BY puesto_trabajo
+    """)).fetchall()
 
         turnos = conn.execute(text("""
             SELECT tipo_turno, numero_horas
@@ -672,7 +713,7 @@ def maquina_turnos():
     return render_template(
         "maquina_turnos.html",
         data=data,
-        maquinas=[m[0] for m in maquinas],
+        maquinas=[{"maquina": m[0], "eficiencia": m[1]} for m in maquinas],
         turnos=[{"tipo": t[0], "horas": t[1]} for t in turnos]
     )
 
@@ -681,29 +722,53 @@ def maquina_turnos():
 @login_requerido
 def crear_maquina_turno():
 
+    maquina = request.form.get("maquina")
+    turno = request.form.get("turno")
     total = float(request.form.get("total_horas") or 0)
-    eficiencia = float(request.form.get("factor_eficiencia") or 1)
+    semana = request.form.get("semana")
 
-    disponibilidad = total * eficiencia
-
-    query = text("""
-        INSERT INTO maquinas_turnos 
-        (maquina, turno, total_horas, semana, factor_eficiencia, disponibilidad, activo)
-        VALUES (:maquina, :turno, :total, :semana, :eficiencia, :disp, 1)
+    # 🔥 TRAER EFICIENCIA REAL DESDE BD
+    query_ef = text("""
+        SELECT eficiencia
+        FROM `puestos de trabajo`
+        WHERE puesto_trabajo = :maquina
+        LIMIT 1
     """)
 
     with engine.connect() as conn:
-        conn.execute(query, {
-            "maquina": request.form.get("maquina"),
-            "turno": request.form.get("turno"),
+        result = conn.execute(query_ef, {"maquina": maquina}).fetchone()
+
+        eficiencia = float(result[0]) if result and result[0] else 1
+
+        disponibilidad = total * eficiencia
+
+        # 🔥 INSERT
+        result_insert = conn.execute(text("""
+            INSERT INTO maquinas_turnos 
+            (maquina, turno, total_horas, semana, factor_eficiencia, disponibilidad, activo)
+            VALUES (:maquina, :turno, :total, :semana, :eficiencia, :disp, 1)
+        """), {
+            "maquina": maquina,
+            "turno": turno,
             "total": total,
-            "semana": request.form.get("semana"),
+            "semana": semana,
             "eficiencia": eficiencia,
             "disp": disponibilidad
         })
+
         conn.commit()
 
-    return redirect(url_for("maquina_turnos"))
+        nuevo_id = result_insert.lastrowid
+
+    return jsonify({
+        "id": nuevo_id,
+        "maquina": maquina,
+        "turno": turno,
+        "total_horas": total,
+        "semana": semana,
+        "factor_eficiencia": eficiencia,
+        "disponibilidad": round(disponibilidad, 2)
+    })
 
 # 🗑️ DESACTIVAR
 @app.route("/maquina_turnos/eliminar/<int:id>")
@@ -719,6 +784,95 @@ def eliminar_maquina_turno(id):
         conn.commit()
 
     return redirect(url_for("maquina_turnos"))
+
+# ♻️ REACTIVAR
+@app.route("/maquina_turnos/reactivar/<int:id>")
+@login_requerido
+def reactivar_maquina_turno(id):
+
+    with engine.connect() as conn:
+        conn.execute(text("""
+            UPDATE maquinas_turnos
+            SET activo = 1
+            WHERE id = :id
+        """), {"id": id})
+        conn.commit()
+
+    return jsonify({"ok": True})
+
+@app.route("/puestos_trabajo")
+@login_requerido
+def puestos_trabajo():
+
+    with engine.connect() as conn:
+        data = conn.execute(text("""
+            SELECT 
+                centro,
+                proceso,
+                sub_proceso,
+                puesto_trabajo,
+                descripcion_puesto,
+                eficiencia
+            FROM `puestos de trabajo`
+            ORDER BY centro, proceso
+        """)).fetchall()
+
+    return render_template("puestos_trabajo.html", data=data)
+@app.route("/puestos_trabajo/editar", methods=["POST"])
+@login_requerido
+def editar_puesto():
+
+    data = request.json
+
+    query = text("""
+        UPDATE `puestos de trabajo`
+        SET 
+            descripcion_puesto = :descripcion,
+            eficiencia = :eficiencia
+        WHERE 
+            centro = :centro
+            AND proceso = :proceso
+            AND sub_proceso = :sub
+            AND puesto_trabajo = :puesto
+    """)
+
+    with engine.connect() as conn:
+        conn.execute(query, {
+            "descripcion": data["descripcion_puesto"],
+            "eficiencia": data["eficiencia"],
+            "centro": data["centro"],
+            "proceso": data["proceso"],
+            "sub": data["sub_proceso"],
+            "puesto": data["puesto_trabajo"]
+        })
+        conn.commit()
+
+    return jsonify({"ok": True})
+
+@app.route("/puestos_trabajo/crear", methods=["POST"])
+@login_requerido
+def crear_puesto():
+
+    query = text("""
+        INSERT INTO `puestos de trabajo`
+        (centro, proceso, sub_proceso, puesto_trabajo, descripcion_puesto, eficiencia)
+        VALUES (:centro, :proceso, :sub, :puesto, :desc, :ef)
+    """)
+
+    with engine.connect() as conn:
+        conn.execute(query, {
+            "centro": request.form.get("centro"),
+            "proceso": request.form.get("proceso"),
+            "sub": request.form.get("sub_proceso"),
+            "puesto": request.form.get("puesto_trabajo"),
+            "desc": request.form.get("descripcion_puesto"),
+            "ef": request.form.get("eficiencia") or 1
+        })
+        conn.commit()
+
+    return redirect(url_for("puestos_trabajo"))
+
+
 # =========================
 # 🚀 RUN
 # =========================

@@ -4,112 +4,157 @@
 
 <div class="container mt-4">
 
-    <h3 class="mb-4">🏭 Planeación Máquina - Turnos</h3>
+    <h3 class="mb-4 fw-bold text-primary">
+        🏭 Planeación Máquina - Turnos
+    </h3>
 
     <!-- FORM -->
-    <div class="card p-4 shadow-sm mb-4">
+    <div class="card shadow border-0 mb-4">
+        <div class="card-body">
 
-        <form method="POST" action="{{ url_for('crear_maquina_turno') }}">
+            <form id="formTurno">
 
-            <div class="row g-3">
+                <div class="row g-4">
 
-                <div class="col-md-2">
-                    <select name="maquina" class="form-control" required>
-                        <option>Máquina</option>
-                        {% for m in maquinas %}
-                        <option value="{{ m }}">{{ m }}</option>
-                        {% endfor %}
-                    </select>
+                    <!-- MAQUINA -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Máquina</label>
+                        <select name="maquina" id="maquina" class="form-select" required onchange="setEficiencia(this)">
+                            <option value="">Seleccionar máquina</option>
+                            {% for m in maquinas %}
+                            <option value="{{ m.maquina }}" data-ef="{{ m.eficiencia }}">
+                                {{ m.maquina }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- TURNO -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Turno</label>
+                        <select name="turno" id="turno" class="form-select" required onchange="setHoras(this)">
+                            <option value="">Seleccionar turno</option>
+                            {% for t in turnos %}
+                            <option value="{{ t.tipo }}" data-horas="{{ t.horas }}">
+                                {{ t.tipo }} ({{ t.horas }}h)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- HORAS -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Horas</label>
+                        <input type="number" step="0.01" name="total_horas" id="horas"
+                            class="form-control" placeholder="Ej: 8">
+                    </div>
+
+                    <!-- SEMANA -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Semana</label>
+                        <input name="semana" class="form-control" placeholder="2026-15">
+                    </div>
+
+                    <!-- EFICIENCIA (SOLO VISUAL) -->
+                    <div class="col-md-1">
+                        <label class="form-label fw-semibold">Efic.</label>
+                        <input id="ef" class="form-control bg-light fw-bold"
+                            placeholder="Auto" readonly>
+                    </div>
+
+                    <!-- DISPONIBILIDAD -->
+                    <div class="col-md-1">
+                        <label class="form-label fw-semibold text-success">Disp.</label>
+                        <input id="disp" class="form-control bg-light fw-bold text-success"
+                            placeholder="0.00" readonly>
+                    </div>
+
                 </div>
 
-                <div class="col-md-1">
-                    <select name="turno" id="turno" class="form-control" required onchange="setHoras(this)">
-                        <option>Turno</option>
-                        {% for t in turnos %}
-                        <option value="{{ t.tipo }}" data-horas="{{ t.horas }}">
-                            {{ t.tipo }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                <!-- BOTON -->
+                <div class="mt-4 text-end">
+                    <button class="btn btn-success px-4">
+                        ➕ Crear Planeación
+                    </button>
                 </div>
 
-                <div class="col-md-2">
-                    <input name="total_horas" id="horas" class="form-control" placeholder="Horas">
-                </div>
+            </form>
 
-                <div class="col-md-2">
-                    <input name="semana" class="form-control" placeholder="Semana (ej: 2026-15)">
-                </div>
-
-                <div class="col-md-2">
-                    <input name="factor_eficiencia" id="ef" class="form-control" placeholder="0.85">
-                </div>
-
-                <div class="col-md-2">
-                    <input id="disp" class="form-control" placeholder="Disponibilidad" readonly>
-                </div>
-
-                <div class="col-md-1">
-                    <button class="btn btn-success w-100">+</button>
-                </div>
-
-            </div>
-
-        </form>
-
+        </div>
     </div>
 
     <!-- TABLA -->
-    <table class="table table-hover text-center">
+    <div class="card shadow border-0">
+        <div class="card-body p-0">
 
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>Máquina</th>
-                <th>Turno</th>
-                <th>Horas</th>
-                <th>Semana</th>
-                <th>Eficiencia</th>
-                <th>Disponibilidad</th>
-                <th></th>
-            </tr>
-        </thead>
+            <table class="table table-hover text-center align-middle mb-0">
 
-        <tbody>
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Máquina</th>
+                        <th>Turno</th>
+                        <th>Horas</th>
+                        <th>Semana</th>
+                        <th>Eficiencia</th>
+                        <th>Disponibilidad</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
 
-        {% for d in data %}
-        <tr>
-            <td>{{ d.id }}</td>
-            <td>{{ d.maquina }}</td>
-            <td>{{ d.turno }}</td>
-            <td>{{ d.total_horas }}</td>
-            <td>{{ d.semana }}</td>
-            <td>{{ d.factor_eficiencia }}</td>
-            <td>{{ d.disponibilidad }}</td>
+                <tbody id="tablaBody">
+                    {% for d in data %}
+                    <tr class="{% if d.activo == 0 %}table-secondary{% endif %}">
+                        <td>{{ d.id }}</td>
+                        <td>{{ d.maquina }}</td>
+                        <td>{{ d.turno }}</td>
+                        <td>{{ d.total_horas }}</td>
+                        <td>{{ d.semana }}</td>
+                        <td>{{ d.factor_eficiencia }}</td>
+                        <td class="fw-bold text-success">{{ d.disponibilidad }}</td>
+                        <td>
 
-            <td>
-                <a href="{{ url_for('eliminar_maquina_turno', id=d.id) }}"
-                   class="btn btn-danger btn-sm">X</a>
-            </td>
-        </tr>
-        {% endfor %}
+                            {% if d.activo == 1 %}
+                                <button onclick="eliminarFila(this, {{ d.id }})"
+                                    class="btn btn-danger btn-sm">
+                                    ❌
+                                </button>
+                            {% else %}
+                                <button onclick="reactivarFila(this, {{ d.id }})"
+                                    class="btn btn-success btn-sm">
+                                    ♻️
+                                </button>
+                            {% endif %}
 
-        </tbody>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
 
-    </table>
+            </table>
+
+        </div>
+    </div>
 
 </div>
 
 <script>
-// 🔥 AUTO HORAS SEGÚN TURNO
+
+// 🔥 EFICIENCIA AUTOMÁTICA (SOLO VISUAL)
+function setEficiencia(select){
+    let ef = select.options[select.selectedIndex].dataset.ef || 1;
+    document.getElementById("ef").value = ef;
+    calcular();
+}
+
+// 🔥 HORAS AUTOMÁTICAS
 function setHoras(select){
-    let horas = select.options[select.selectedIndex].dataset.horas;
+    let horas = select.options[select.selectedIndex].dataset.horas || 0;
     document.getElementById("horas").value = horas;
     calcular();
 }
 
-// 🔥 CALCULAR DISPONIBILIDAD
-document.getElementById("ef").addEventListener("input", calcular);
+// 🔥 CALCULO DISPONIBILIDAD
 document.getElementById("horas").addEventListener("input", calcular);
 
 function calcular(){
@@ -117,6 +162,84 @@ function calcular(){
     let ef = parseFloat(document.getElementById("ef").value) || 0;
     document.getElementById("disp").value = (h * ef).toFixed(2);
 }
+
+
+// 🔥 CREAR (IMPORTANTE: NO ENVÍA EFICIENCIA)
+document.getElementById("formTurno").addEventListener("submit", function(e){
+    e.preventDefault();
+
+    let formData = new FormData(this);
+
+    // 🔥 ELIMINAMOS EFICIENCIA SI EXISTE
+    formData.delete("factor_eficiencia");
+
+    fetch("{{ url_for('crear_maquina_turno') }}", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        let fila = `
+        <tr>
+            <td>${data.id}</td>
+            <td>${data.maquina}</td>
+            <td>${data.turno}</td>
+            <td>${data.total_horas}</td>
+            <td>${data.semana}</td>
+            <td>${data.factor_eficiencia}</td>
+            <td class="fw-bold text-success">${data.disponibilidad}</td>
+            <td>
+                <button onclick="eliminarFila(this, ${data.id})"
+                    class="btn btn-danger btn-sm">
+                    ❌
+                </button>
+            </td>
+        </tr>
+        `;
+
+        document.getElementById("tablaBody").insertAdjacentHTML("afterbegin", fila);
+
+        document.getElementById("formTurno").reset();
+        document.getElementById("disp").value = "";
+        document.getElementById("ef").value = "";
+
+    });
+});
+
+
+// 🔥 DESACTIVAR
+function eliminarFila(btn, id){
+    fetch(`/maquina_turnos/eliminar/${id}`)
+    .then(() => {
+        let row = btn.closest("tr");
+        row.classList.add("table-secondary");
+
+        btn.outerHTML = `
+            <button onclick="reactivarFila(this, ${id})"
+                class="btn btn-success btn-sm">
+                ♻️
+            </button>
+        `;
+    });
+}
+
+// 🔥 REACTIVAR
+function reactivarFila(btn, id){
+    fetch(`/maquina_turnos/reactivar/${id}`)
+    .then(() => {
+        let row = btn.closest("tr");
+        row.classList.remove("table-secondary");
+
+        btn.outerHTML = `
+            <button onclick="eliminarFila(this, ${id})"
+                class="btn btn-danger btn-sm">
+                ❌
+            </button>
+        `;
+    });
+}
+
 </script>
 
 {% endblock %}

@@ -28,7 +28,7 @@ function cargarGrafica(proceso, sub_proceso = null) {
 
 
 // =========================
-// 🏭 GRAFICA POR PLANTA (NUEVO)
+// 🏭 GRAFICA POR PLANTA
 // =========================
 function cargarGraficaPorPlanta(centro) {
 
@@ -37,7 +37,7 @@ function cargarGraficaPorPlanta(centro) {
             if (!res.ok) throw new Error("Error en la API");
             return res.json();
         })
-        .then(data => renderGrafica(data, "graficaProceso")) // 🔥 reutiliza canvas
+        .then(data => renderGrafica(data, "graficaProceso"))
         .catch(err => {
             console.error(err);
             alert("Error cargando gráfica por planta");
@@ -46,7 +46,7 @@ function cargarGraficaPorPlanta(centro) {
 
 
 // =========================
-// 🎨 RENDER GRAFICA (REUTILIZABLE)
+// 🎨 RENDER GRAFICA
 // =========================
 function renderGrafica(data, canvasId) {
 
@@ -69,7 +69,6 @@ function renderGrafica(data, canvasId) {
                     position: 'right'
                 },
 
-                // 🔥 TOOLTIP CON HORAS
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -88,7 +87,7 @@ function renderGrafica(data, canvasId) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return Math.round(value); // 🔥 enteros
+                            return Math.round(value);
                         }
                     },
                     title: {
@@ -114,6 +113,9 @@ function cargarSubprocesos(proceso) {
 
     container.innerHTML = "<p class='text-muted'>Cargando subprocesos...</p>";
 
+    // 🔥 PRIMERO: cargar TODO el proceso (SIN filtro)
+    cargarGrafica(proceso, null);
+
     fetch(`/api/subprocesos?proceso=${encodeURIComponent(proceso)}`)
         .then(res => res.json())
         .then(data => {
@@ -125,7 +127,7 @@ function cargarSubprocesos(proceso) {
                 return;
             }
 
-            data.forEach((sub, index) => {
+            data.forEach((sub) => {
 
                 const btn = document.createElement("button");
 
@@ -135,11 +137,6 @@ function cargarSubprocesos(proceso) {
                 btn.onclick = () => seleccionarSubproceso(proceso, sub, btn);
 
                 container.appendChild(btn);
-
-                if (index === 0) {
-                    seleccionarSubproceso(proceso, sub, btn);
-                }
-
             });
 
         })

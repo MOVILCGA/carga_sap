@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Puestos de Trabajo{% endblock %}
+
+{% block content %}
+
+<style>
+.table td input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+}
+
+.table td input:focus {
+    outline: none;
+    background: #f0fdf4;
+    border-bottom: 2px solid #22c55e;
+}
+
+.guardado {
+    background-color: #dcfce7 !important;
+}
+</style>
+
+<div class="container mt-4">
+
+    <h3 class="mb-4">🏭 Puestos de Trabajo (Editable)</h3>
+
+    <div class="card shadow p-3">
+
+        <table class="table table-hover text-center align-middle">
+
+            <thead class="table-dark">
+                <tr>
+                    <th>Centro</th>
+                    <th>Proceso</th>
+                    <th>Sub Proceso</th>
+                    <th>Puesto</th>
+                    <th>Descripción</th>
+                    <th>Eficiencia</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for d in data %}
+                <tr>
+
+                    <td>{{ d.centro }}</td>
+                    <td>{{ d.proceso }}</td>
+                    <td>{{ d.sub_proceso }}</td>
+                    <td>{{ d.puesto_trabajo }}</td>
+
+                    <!-- EDITABLE -->
+                    <td>
+                        <input value="{{ d.descripcion_puesto }}"
+                               onchange="guardar(this)">
+                    </td>
+
+                    <td>
+                        <input value="{{ d.eficiencia }}"
+                               type="number" step="0.01"
+                               onchange="guardar(this)">
+                    </td>
+
+                </tr>
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+function guardar(input){
+
+    let fila = input.closest("tr");
+
+    let data = {
+        centro: fila.children[0].innerText.trim(),
+        proceso: fila.children[1].innerText.trim(),
+        sub_proceso: fila.children[2].innerText.trim(),
+        puesto_trabajo: fila.children[3].innerText.trim(),
+        descripcion_puesto: fila.children[4].querySelector("input").value,
+        eficiencia: fila.children[5].querySelector("input").value
+    };
+
+    fetch("/puestos_trabajo/editar", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(() => {
+        fila.classList.add("guardado");
+
+        setTimeout(() => {
+            fila.classList.remove("guardado");
+        }, 800);
+    });
+
+}
+
+</script>
+
+{% endblock %}

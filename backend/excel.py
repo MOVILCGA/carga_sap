@@ -68,6 +68,9 @@ def procesar_excel(df):
     elif "centro" in columnas and "proceso" in columnas:
         tipo = "procesos"
 
+    elif "mandt" in columnas and "vbeln" in columnas and "matnr" in columnas:
+        tipo = "sap_full"
+
     elif "centro" in columnas:
         tipo = "sap_2"
 
@@ -104,18 +107,103 @@ def procesar_excel(df):
             if key in mapa:
                 nuevas[col] = mapa[key]
 
-        if nuevas:
-            cambios.append("Se estandarizaron nombres de columnas")
-
         df = df.rename(columns=nuevas)
+        cambios.append("Se estandarizaron nombres de columnas")
 
         if "turnos" in df.columns:
             df["turnos"] = pd.to_numeric(df["turnos"], errors="coerce")
-            cambios.append("Se convirtió 'turnos' a número")
 
         if "cant_equipos" in df.columns:
             df["cant_equipos"] = pd.to_numeric(df["cant_equipos"], errors="coerce")
-            cambios.append("Se convirtió 'cant_equipos' a número")
+
+    # =========================
+    # 📦 SAP FULL (NUEVO 🔥)
+    # =========================
+    elif tipo == "sap_full":
+
+        cambios.append("Archivo detectado como SAP FULL")
+
+        mapa = {
+            "mandt": "mandt",
+            "id": "id",
+            "gjahr": "gjahr",
+            "mes": "mes",
+            "status": "status",
+            "origen": "origen",
+            "auart": "auart",
+            "vkbur": "vkbur",
+            "vbeln": "vbeln",
+            "posnr": "posnr",
+            "vdatu": "vdatu",
+            "aufnr": "aufnr",
+            "matnr": "matnr",
+            "arktx": "descripcion",
+            "charg": "lote",
+            "mvgr1": "grupo_material",
+            "bezei": "descripcion_grupo",
+            "ntgew": "peso_neto",
+            "gewei": "unidad_peso",
+            "netpr": "precio",
+            "werks": "centro",
+            "vrkme": "unidad_venta",
+            "kwmeng": "cantidad",
+            "land1": "pais",
+            "name1": "cliente",
+            "ort01": "ciudad",
+            "stras": "direccion",
+            "lzone": "zona",
+            "deszo": "desc_zona",
+            "konda": "condicion",
+            "desko": "desc_condicion",
+            "car1": "car1",
+            "car2": "car2",
+            "car3": "car3",
+            "car4": "car4",
+            "car5": "car5",
+            "car6": "car6",
+            "car7": "car7",
+            "istat_auf": "estado_sistema",
+            "ustat_auf": "estado_usuario",
+            "waerk": "moneda",
+            "kursk": "tasa_cambio",
+            "valor_pos": "valor_pos",
+            "nw_fh_entrega": "fecha_entrega",
+            "valor_ped": "valor_pedido",
+            "bname": "usuario",
+            "f_registro": "fecha_registro",
+            "nombre_usuario": "nombre_usuario"
+        }
+
+        nuevas = {}
+        for col in df.columns:
+            key = col.lower().strip()
+            if key in mapa:
+                nuevas[col] = mapa[key]
+
+        df = df.rename(columns=nuevas)
+        cambios.append("Se estandarizaron columnas SAP FULL")
+
+        # FECHAS
+        for col in ["vdatu", "fecha_entrega", "fecha_registro"]:
+            if col in df.columns:
+                df[col] = limpiar_fechas(df[col])
+
+        # NUMÉRICOS
+        for col in ["peso_neto", "precio", "cantidad", "tasa_cambio", "valor_pos", "valor_pedido"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        # FORMATO SAP (CLAVES)
+        if "vbeln" in df.columns:
+            df["vbeln"] = df["vbeln"].astype(str).str.zfill(10)
+
+        if "posnr" in df.columns:
+            df["posnr"] = df["posnr"].astype(str).str.zfill(6)
+
+        if "matnr" in df.columns:
+            df["matnr"] = df["matnr"].astype(str).str.zfill(18)
+
+        cambios.append("Se normalizaron claves SAP")
 
     # =========================
     # 📦 SAP 1
@@ -131,19 +219,8 @@ def procesar_excel(df):
                 df[col] = df[col].astype(str).str.replace(" mm", "", regex=False)
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        cambios.append("Se convirtieron medidas (mm) a números")
-
         if "Fec. Entrega" in df.columns:
             df["Fec. Entrega"] = limpiar_fechas(df["Fec. Entrega"])
-            cambios.append("Se formateó 'Fec. Entrega' a fecha")
-
-        if "Fcha.Ent.Des." in df.columns:
-            df["Fcha.Ent.Des."] = limpiar_fechas(df["Fcha.Ent.Des."])
-            cambios.append("Se formateó 'Fcha.Ent.Des.' a fecha")
-
-        if "Unidades" in df.columns:
-            df["Unidades"] = pd.to_numeric(df["Unidades"], errors="coerce")
-            cambios.append("Se convirtió 'Unidades' a número")
 
     # =========================
     # 📦 SAP 2
@@ -154,24 +231,18 @@ def procesar_excel(df):
 
         if "Liberación real" in df.columns:
             df["Liberación real"] = limpiar_fechas(df["Liberación real"])
-            cambios.append("Se formateó 'Liberación real' a fecha")
 
     # =========================
     # 🚚 LOGISTICA
     # =========================
     elif tipo == "logistica":
 
-        cambios.append("Archivo detectado como LOGISTICA (despachos)")
+        cambios.append("Archivo detectado como LOGISTICA")
 
         mapa = {
             "dpto-dest": "dpto_dest",
             "municipio-dest": "municipio_dest",
-            "recolección origen": "recoleccion_origen",
-            "distribución destino": "distribucion_destino",
-            "tipo trayecto": "tipo_trayecto",
-            "tiempo entrega": "tiempo_entrega",
-            "contra entrega": "contra_entrega",
-            "tipo despacho": "tipo_despacho"
+            "tiempo entrega": "tiempo_entrega"
         }
 
         nuevas = {}
@@ -180,20 +251,10 @@ def procesar_excel(df):
             if key in mapa:
                 nuevas[col] = mapa[key]
 
-        if nuevas:
-            cambios.append("Se estandarizaron columnas de logística")
-
         df = df.rename(columns=nuevas)
 
-        # tiempo entrega → número
         if "tiempo_entrega" in df.columns:
             df["tiempo_entrega"] = pd.to_numeric(df["tiempo_entrega"], errors="coerce")
-            cambios.append("Se convirtió 'tiempo_entrega' a número")
-
-        # contra_entrega → string (máx 10)
-        if "contra_entrega" in df.columns:
-            df["contra_entrega"] = df["contra_entrega"].astype(str).str[:10]
-            cambios.append("Se formateó 'contra_entrega' como texto (10 caracteres)")
 
     # -------------------------
     # eliminar duplicados
